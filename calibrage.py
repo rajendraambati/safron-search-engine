@@ -15,7 +15,7 @@ import platform
 
 def setup_chrome_driver():
     """
-    Set up and return a Chrome WebDriver with additional options for cloud environment
+    Set up and return a Chrome WebDriver with additional options for cloud environment.
     """
     try:
         options = webdriver.ChromeOptions()
@@ -41,10 +41,10 @@ def setup_chrome_driver():
                 # Alternative location
                 options.binary_location = "/usr/bin/chromium-browser"
             except:
-                st.warning("Could not set chromium binary location")
+                st.warning("Could not set Chromium binary location.")
 
         try:
-            # First attempt: Try with system chromium-driver
+            # First attempt: Try with system chromedriver
             service = Service(executable_path="/usr/bin/chromedriver")
             driver = webdriver.Chrome(service=service, options=options)
             return driver
@@ -60,7 +60,7 @@ def setup_chrome_driver():
                 st.warning(f"Second attempt failed: {str(e)}")
                 
                 try:
-                    # Third attempt: Try direct instantiation
+                    # Third attempt: Direct instantiation
                     driver = webdriver.Chrome(options=options)
                     return driver
                 except Exception as e:
@@ -166,13 +166,13 @@ def scrape_google_maps(search_query, driver):
 
 def extract_emails_from_text(text):
     """
-    Extract email addresses from text using regex
+    Extract email addresses from text using regex.
     """
     return re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
 
 def scrape_website_for_emails(url):
     """
-    Scrape a website for email addresses
+    Scrape a website for email addresses.
     """
     try:
         response = requests.get(url, timeout=10)
@@ -210,44 +210,6 @@ def main():
     )
 
     st.markdown("""
-    <style>
-        .stApp {
-            background-color: #000000;
-        }
-        .css-18e3th9 {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-        }
-        .stButton > button {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-            height: 40px;
-            width: 150px;
-        }
-        .stTextInput > div > div > input {
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 16px;
-        }
-        .stDownloadButton > button {
-            background-color: #008CBA;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-            height: 40px;
-            width: 200px;
-        }
-        .success-message {
-            color: green;
-            font-size: 20px;
-        }
-        .error-message {
-            color: red;
-            font-size: 20px;
-        }
-    </style>
     """, unsafe_allow_html=True)
     
     st.title("🔍 Calibrage Info Systems Data Search Engine")
@@ -291,21 +253,21 @@ def main():
                 websites = df["Website"].tolist()
                 email_results = []
                 
-                with st.progress(0) as progress_bar:
-                    for i, website in enumerate(websites):
-                        if website != "N/A" and isinstance(website, str) and website.strip():
-                            urls_to_try = [f"http://{website}", f"https://{website}"]
-                            emails_found = []
-                            for url in urls_to_try:
-                                try:
-                                    emails = scrape_website_for_emails(url)
-                                    emails_found.extend(emails)
-                                except Exception as e:
-                                    st.warning(f"Error scraping emails from {url}: {str(e)}")
-                            email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
-                        else:
-                            email_results.append("N/A")
-                        progress_bar.progress((i + 1) / len(websites))
+                progress_bar = st.progress(0)
+                for i, website in enumerate(websites):
+                    if website != "N/A" and isinstance(website, str) and website.strip():
+                        urls_to_try = [f"http://{website}", f"https://{website}"]
+                        emails_found = []
+                        for url in urls_to_try:
+                            try:
+                                emails = scrape_website_for_emails(url)
+                                emails_found.extend(emails)
+                            except Exception as e:
+                                st.warning(f"Error scraping emails from {url}: {str(e)}")
+                        email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
+                    else:
+                        email_results.append("N/A")
+                    progress_bar.progress((i + 1) / len(websites))
                 
                 df["Email"] = email_results
                 
