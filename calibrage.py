@@ -12,66 +12,6 @@ from bs4 import BeautifulSoup
 import requests
 import io
 import platform
-import spacy
-
-# Load the English language model
-@st.cache_resource
-def load_spacy_model():
-    return spacy.load("en_core_web_sm")
-
-def parse_query_with_nlp(query, nlp):
-    """
-    Process the query using spaCy and return a list of sub-queries
-    """
-    # First, try to split by common delimiters
-    # Split by both commas and 'and', preserving all terms
-    parts = re.split(r'\s*,\s*|\s+and\s+', query.lower())
-    
-    # Clean up the parts and remove any mentions of 'companies' or location
-    keywords = []
-    location = None
-    
-    # Process with spaCy to find location
-    doc = nlp(query)
-    
-    # Extract the location entity
-    for ent in doc.ents:
-        if ent.label_ == "GPE":
-            location = ent.text
-            break
-    
-    # If no location found, look for common country/region names
-    if not location:
-        common_locations = ["India"]
-        query_words = query.upper().split()
-        for loc in common_locations:
-            if loc in query_words:
-                location = loc
-                break
-    
-    # Set default location if none found
-    if not location:
-        location = "India"
-    
-    # Clean up each part
-    for part in parts:
-        # Remove the location if it's in the part
-        part = part.replace(location.lower(), "").strip()
-        # Remove 'companies in' if present
-        part = part.replace("companies in", "").strip()
-        # Remove 'companies' if present
-        part = part.replace("companies", "").strip()
-        
-        if part:
-            keywords.append(part)
-    
-    # Remove duplicates while preserving order
-    keywords = list(dict.fromkeys(keywords))
-    
-    # Generate the final queries
-    final_queries = [f"{keyword.strip()} companies in {location}" for keyword in keywords if keyword.strip()]
-    
-    return final_queries
 
 def setup_chrome_driver():
     """
@@ -92,11 +32,41 @@ def setup_chrome_driver():
         options.add_argument("--disable-features=VizDisplayCompositor")
         options.add_argument("--disable-extensions")
         
-        # Try to create driver with ChromeDriverManager
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        return driver
-        
+        # Try different binary locations
+        try:
+            # For Debian/Ubuntu
+            options.binary_location = "/usr/bin/chromium"
+        except:
+            try:
+                # Alternative location
+                options.binary_location = "/usr/bin/chromium-browser"
+            except:
+                st.warning("Could not set Chromium binary location.")
+
+        try:
+            # First attempt: Try with system chromedriver
+            service = Service(executable_path="/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
+            return driver
+        except Exception as e:
+            st.warning(f"First attempt failed: {str(e)}")
+            
+            try:
+                # Second attempt: Try with ChromeDriverManager
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
+                return driver
+            except Exception as e:
+                st.warning(f"Second attempt failed: {str(e)}")
+                
+                try:
+                    # Third attempt: Direct instantiation
+                    driver = webdriver.Chrome(options=options)
+                    return driver
+                except Exception as e:
+                    st.error(f"All attempts to initialize Chrome driver failed: {str(e)}")
+                    return None
+                    
     except Exception as e:
         st.error(f"Error in setup_chrome_driver: {str(e)}")
         return None
@@ -104,6 +74,7 @@ def setup_chrome_driver():
 def extract_data(xpath, driver):
     """
     Extract data from the page using the provided XPath.
+    If the element exists, return its text; otherwise, return "N/A".
     """
     try:
         element = driver.find_element(By.XPATH, xpath)
@@ -112,9 +83,6 @@ def extract_data(xpath, driver):
         return "N/A"
 
 def scrape_google_maps(search_query, driver):
-    """
-    Scrape Google Maps for the given search query
-    """
     try:
         # Open Google Maps
         driver.get("https://www.google.com/maps")
@@ -122,31 +90,32 @@ def scrape_google_maps(search_query, driver):
         
         # Enter the search query into the search box
         search_box = driver.find_element(By.XPATH, '//input[@id="searchboxinput"]')
-        search_box.clear()  # Clear any existing text
         search_box.send_keys(search_query)
         search_box.send_keys(Keys.ENTER)
         time.sleep(5)  # Wait for results to load
         
         # Zoom out globally to ensure all results are loaded
         actions = ActionChains(driver)
-        for _ in range(5):  # Reduced number of zoom outs
+        for _ in range(10):  # Zoom out multiple times
             actions.key_down(Keys.CONTROL).send_keys("-").key_up(Keys.CONTROL).perform()
-            time.sleep(1)
+            time.sleep(1)  # Wait for the map to adjust
         
         # Scroll and collect all listings
-        all_listings = set()
+        all_listings = set()  # Use a set to avoid duplicates
         previous_count = 0
+        max_scrolls = 50  # Limit the number of scrolls to prevent infinite loops
         scroll_attempts = 0
         
-        while scroll_attempts < 10:  # Reduced max scrolls
+        while scroll_attempts < max_scrolls:
             try:
-                # Scroll down
+                # Scroll down to load more results
                 scrollable_div = driver.find_element(By.XPATH, '//div[contains(@aria-label, "Results for")]')
                 driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
-                time.sleep(3)
+                time.sleep(3)  # Wait for new results to load
                 
-                # Collect listings
+                # Collect all visible listings
                 current_listings = driver.find_elements(By.XPATH, '//a[contains(@href, "https://www.google.com/maps/place")]')
+                current_count = len(current_listings)
                 
                 # Add new listings to the set
                 for listing in current_listings:
@@ -154,43 +123,46 @@ def scrape_google_maps(search_query, driver):
                     if href:
                         all_listings.add(href)
                 
-                if len(all_listings) == previous_count:
+                # Check if no new results were loaded
+                if current_count == previous_count:
                     break
                 
-                previous_count = len(all_listings)
+                # Update the previous count
+                previous_count = current_count
                 scroll_attempts += 1
-                
             except Exception as e:
                 st.warning(f"Error during scrolling: {str(e)}")
                 break
         
-        # Extract details for each listing
+        # Extract details for each unique listing
         results = []
-        for href in list(all_listings)[:20]:  # Limit to first 20 results
+        for i, href in enumerate(all_listings):
             try:
                 driver.get(href)
-                time.sleep(3)
+                time.sleep(3)  # Wait for the sidebar to load
                 
-                name = extract_data('//h1[contains(@class, "DUwDvf")]', driver)
+                # Extract details
+                name = extract_data('//h1[contains(@class, "DUwDvf lfPIob")]', driver)
                 address = extract_data('//button[@data-item-id="address"]//div[contains(@class, "fontBodyMedium")]', driver)
                 phone = extract_data('//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "fontBodyMedium")]', driver)
                 website = extract_data('//a[@data-item-id="authority"]//div[contains(@class, "fontBodyMedium")]', driver)
                 
-                if name != "N/A":  # Only add if we found a valid name
-                    results.append({
-                        "Name": name,
-                        "Address": address,
-                        "Phone Number": phone,
-                        "Website": website
-                    })
+                # Append to results
+                results.append({
+                    "Name": name,
+                    "Address": address,
+                    "Phone Number": phone,
+                    "Website": website
+                })
             except Exception as e:
+                st.warning(f"Error processing listing {i+1}: {str(e)}")
                 continue
         
-        return pd.DataFrame(results) if results else pd.DataFrame()
+        return pd.DataFrame(results) if results else None
     
     except Exception as e:
         st.error(f"Error in scrape_google_maps: {str(e)}")
-        return pd.DataFrame()
+        return None
 
 def extract_emails_from_text(text):
     """
@@ -203,11 +175,31 @@ def scrape_website_for_emails(url):
     Scrape a website for email addresses.
     """
     try:
-        response = requests.get(url, timeout=5)  # Reduced timeout
+        response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Extract emails from the homepage
         emails = set(extract_emails_from_text(soup.get_text()))
+        
+        # Check the footer for emails
+        footer = soup.find('footer')
+        if footer:
+            emails.update(extract_emails_from_text(footer.get_text()))
+        
+        # Find links to the contact page
+        contact_links = [a['href'] for a in soup.find_all('a', href=True) if 'contact' in a['href'].lower()]
+        for link in contact_links:
+            if not link.startswith("http"):
+                link = url.rstrip("/") + "/" + link.lstrip("/")
+            try:
+                contact_response = requests.get(link, timeout=10)
+                contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
+                emails.update(extract_emails_from_text(contact_soup.get_text()))
+            except Exception:
+                continue
+        
         return list(emails)
-    except:
+    except Exception:
         return []
 
 def main():
@@ -216,6 +208,9 @@ def main():
         page_icon="🔍",
         layout="wide"
     )
+
+    st.markdown("""
+    """, unsafe_allow_html=True)
     
     st.title("🔍 Calibrage Info Systems Data Search Engine")
     
@@ -225,93 +220,62 @@ def main():
     st.sidebar.text(f"System: {platform.system()}")
     st.sidebar.text(f"Platform: {platform.platform()}")
     
-    # Load spaCy model
-    try:
-        nlp = load_spacy_model()
-    except Exception as e:
-        st.error(f"Failed to load spaCy model: {str(e)}")
-        return
-    
-    master_query = st.text_input("Enter your search query (e.g., 'food, beverages and sanitization companies in USA')", "")
+    search_query = st.text_input("Enter the search Term Below 👇", "")
     placeholder = st.empty()
     
     if st.button("Scrap It!"):
-        if not master_query.strip():
+        if not search_query.strip():
             st.error("Please enter a valid search query.")
             return
         
-        # Parse the master query into sub-queries
-        sub_queries = parse_query_with_nlp(master_query, nlp)
+        placeholder.markdown("**Processing..... Please Wait**")
         
-        if not sub_queries:
-            st.error("Could not parse any valid sub-queries from your input.")
-            return
-        
-        st.write("Generated sub-queries:")
-        for query in sub_queries:
-            st.write(f"- {query}")
-        
-        placeholder.markdown("**Processing... Please Wait**")
-        
-        # Initialize Chrome driver
-        driver = setup_chrome_driver()
-        
-        if driver is None:
-            st.error("Failed to initialize Chrome driver. Please ensure Chrome is installed and try again.")
-            return
-        
+        # Initialize Chrome driver with automatic installation
+        driver = None
         try:
-            # Store results for all sub-queries
-            all_results = []
+            driver = setup_chrome_driver()
             
-            # Create a progress bar for overall progress
-            progress_bar = st.progress(0)
+            if driver is None:
+                st.error("""
+                Failed to initialize Chrome driver. This could be due to:
+                1. Chrome browser not installed
+                2. Running in a restricted environment
+                3. System compatibility issues
+                
+                Please check the system information in the sidebar for details.
+                """)
+                return
             
-            # Process each sub-query
-            for idx, query in enumerate(sub_queries):
-                st.write(f"Processing query: {query}")
-                
-                df = scrape_google_maps(query, driver)
-                
-                if not df.empty:
-                    # Add query information
-                    df['Search Query'] = query
-                    
-                    # Process websites and emails
-                    websites = df["Website"].tolist()
-                    email_results = []
-                    
-                    sub_progress = st.progress(0)
-                    for i, website in enumerate(websites):
-                        if website != "N/A" and isinstance(website, str) and website.strip():
-                            urls_to_try = [f"http://{website}", f"https://{website}"]
-                            emails_found = []
-                            for url in urls_to_try:
-                                try:
-                                    emails = scrape_website_for_emails(url)
-                                    emails_found.extend(emails)
-                                except Exception as e:
-                                    continue
-                            email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
-                        else:
-                            email_results.append("N/A")
-                        sub_progress.progress((i + 1) / len(websites))
-                    
-                    df["Email"] = email_results
-                    all_results.append(df)
-                
-                # Update overall progress
-                progress_bar.progress((idx + 1) / len(sub_queries))
+            df = scrape_google_maps(search_query, driver)
             
-            # Combine all results
-            if all_results:
-                final_df = pd.concat(all_results, ignore_index=True)
+            if df is not None and not df.empty:
+                # Process websites and emails
+                websites = df["Website"].tolist()
+                email_results = []
+                
+                progress_bar = st.progress(0)
+                for i, website in enumerate(websites):
+                    if website != "N/A" and isinstance(website, str) and website.strip():
+                        urls_to_try = [f"http://{website}", f"https://{website}"]
+                        emails_found = []
+                        for url in urls_to_try:
+                            try:
+                                emails = scrape_website_for_emails(url)
+                                emails_found.extend(emails)
+                            except Exception as e:
+                                st.warning(f"Error scraping emails from {url}: {str(e)}")
+                        email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
+                    else:
+                        email_results.append("N/A")
+                    progress_bar.progress((i + 1) / len(websites))
+                
+                df["Email"] = email_results
                 
                 # Save to Excel
                 try:
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                        final_df.to_excel(writer, index=False)
+                        df.to_excel(writer, index=False)
                     output.seek(0)
                     
                     placeholder.empty()
@@ -325,7 +289,7 @@ def main():
                 except Exception as e:
                     st.error(f"Error saving results: {str(e)}")
             else:
-                st.warning("No results found for any of the sub-queries.")
+                st.warning("No results found for the given search query.")
                 
         except Exception as e:
             st.error(f"An error occurred during scraping: {str(e)}")
