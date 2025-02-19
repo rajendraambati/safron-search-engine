@@ -283,7 +283,7 @@ def main():
                     st.download_button(
                         label="Download Results",
                         data=output,
-                        file_name="final_results.xlsx",
+                        file_name=f"{search_query}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 except Exception as e:
