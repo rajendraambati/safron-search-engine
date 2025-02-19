@@ -283,7 +283,7 @@ def main():
                     st.download_button(
                         label="Download Results",
                         data=output,
-                        file_name=f"{search_query}.xlsx",
+                        file_name="Calibrage Data Extracton.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 except Exception as e:
