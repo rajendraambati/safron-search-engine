@@ -220,7 +220,7 @@ def main():
     st.sidebar.text(f"System: {platform.system()}")
     st.sidebar.text(f"Platform: {platform.platform()}")
     
-    search_query = st.text_input("Enter the search Term Below 👇", "")
+    search_query = st.text_input("Enter the search Term Below 👇 ( e.g : palm oil, software companies in india", "")
     placeholder = st.empty()
     
     if st.button("Scrap It!"):
