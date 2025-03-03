@@ -29,7 +29,7 @@ def setup_chrome_driver():
         options = webdriver.ChromeOptions()
         
         # Essential options for running in cloud
-        options.add_argument("--headless") 
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -55,7 +55,7 @@ def setup_chrome_driver():
             # First attempt: Try with system chromedriver
             service = Service(executable_path="/usr/bin/chromedriver")
             driver = webdriver.Chrome(service=service, options=options)
-            return driver 
+            return driver
         except Exception as e:
             logging.error(f"First attempt failed: {str(e)}")
             
@@ -63,7 +63,7 @@ def setup_chrome_driver():
                 # Second attempt: Try with ChromeDriver Manager
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=options)
-                return driver 
+                return driver
             except Exception as e:
                 logging.error(f"Second attempt failed: {str(e)}")
                 
@@ -172,7 +172,7 @@ def scrape_google_maps(search_query, driver):
         return pd.DataFrame(results) if results else None
     
     except Exception as e:
-        logging.error(f"Error in scrape_google_maps: {str(e)}")  
+        logging.error(f"Error in scrape_google_maps: {str(e)}")
         return None
 
 def extract_emails_from_text(text):
@@ -233,6 +233,10 @@ def main():
     
     search_query = st.text_input("Enter the search Term Below 👇 (e.g: palm oil, software companies in india)", "")
     
+    # Create placeholders for download button and success message
+    download_button_placeholder = st.empty()
+    success_message_placeholder = st.empty()
+    
     # Create a container for the button and processing message
     button_container = st.container()
     with button_container:
@@ -246,14 +250,8 @@ def main():
     result_table_placeholder = st.empty()
     result_table_data = []
     
-    # Add a container for the top-right download button
-    top_right_container = st.container()
-    with top_right_container:
-        col1, col2 = st.columns([3, 1])  # Adjust column ratios to position the button on the right
-        with col1:
-            st.write("")  # Empty space to align the button properly
-        with col2:
-            download_button_placeholder = st.empty()  # Placeholder for the download button
+    # Initialize dataframe for Excel data
+    excel_data = None
     
     if scrap_button:
         if not search_query.strip():
@@ -311,31 +309,28 @@ def main():
                 
                 df["Email"] = email_results
                 
-                # Save to Excel
-                try:
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                        df.to_excel(writer, index=False)
-                    output.seek(0)
-                    
-                    # Clear the processing message
-                    placeholder.empty()
-                    
-                    # Add success message
-                    st.success("Done! 👇Click Download Button Below")
-                    
-                    # Add download button in the top-right corner
-                    download_button_placeholder.download_button(
-                        label="Download Results",
-                        data=output,
-                        file_name="Calibrage Data Extraction.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                    
-                    # Display the table below the download button
-                    result_table_placeholder.table(result_table_data)
-                except Exception as e:
-                    st.error(f"Error saving results: {str(e)}")
+                # Prepare Excel data for download
+                excel_data = io.BytesIO()
+                with pd.ExcelWriter(excel_data, engine="openpyxl") as writer:
+                    df.to_excel(writer, index=False)
+                excel_data.seek(0)
+                
+                # Clear the processing message
+                placeholder.empty()
+                
+                # Show success message
+                success_message_placeholder.success("Done! 👇Click Download Button Below")
+                
+                # Add download button
+                download_button_placeholder.download_button(
+                    label="Download Results",
+                    data=excel_data,
+                    file_name="Calibrage Data Extraction.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                
+                # Display the table
+                result_table_placeholder.table(result_table_data)
             else:
                 st.warning("No results found for the given search query.")
                 
