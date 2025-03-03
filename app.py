@@ -29,7 +29,7 @@ def setup_chrome_driver():
         options = webdriver.ChromeOptions()
         
         # Essential options for running in cloud
-        options.add_argument("--headless") 
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -55,7 +55,7 @@ def setup_chrome_driver():
             # First attempt: Try with system chromedriver
             service = Service(executable_path="/usr/bin/chromedriver")
             driver = webdriver.Chrome(service=service, options=options)
-            return driver 
+            return driver
         except Exception as e:
             logging.error(f"First attempt failed: {str(e)}")
             
@@ -63,7 +63,7 @@ def setup_chrome_driver():
                 # Second attempt: Try with ChromeDriver Manager
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=options)
-                return driver 
+                return driver
             except Exception as e:
                 logging.error(f"Second attempt failed: {str(e)}")
                 
@@ -172,7 +172,7 @@ def scrape_google_maps(search_query, driver):
         return pd.DataFrame(results) if results else None
     
     except Exception as e:
-        logging.error(f"Error in scrape_google_maps: {str(e)}")  
+        logging.error(f"Error in scrape_google_maps: {str(e)}")
         return None
 
 def extract_emails_from_text(text):
