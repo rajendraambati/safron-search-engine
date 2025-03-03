@@ -5,8 +5,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 import re
@@ -15,9 +13,6 @@ import requests
 import io
 import platform
 import logging
-import json
-import signal
-import sys
 
 # Configure logging
 logging.basicConfig(
@@ -25,17 +20,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler()]
 )
-
-# Global flag for graceful shutdown
-shutdown_flag = False
-
-def signal_handler(sig, frame):
-    global shutdown_flag
-    logging.info("Shutdown signal received. Finishing current tasks...")
-    shutdown_flag = True
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
 
 def setup_chrome_driver():
     """
@@ -45,7 +29,7 @@ def setup_chrome_driver():
         options = webdriver.ChromeOptions()
         
         # Essential options for running in cloud
-        options.add_argument("--headless")
+        options.add_argument("--headless") 
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -76,10 +60,10 @@ def setup_chrome_driver():
             logging.error(f"First attempt failed: {str(e)}")
             
             try:
-                # Second attempt: Try with ChromeDriverManager
+                # Second attempt: Try with ChromeDriver Manager
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=options)
-                return driver
+                return driver 
             except Exception as e:
                 logging.error(f"Second attempt failed: {str(e)}")
                 
@@ -95,14 +79,6 @@ def setup_chrome_driver():
         logging.error(f"Error in setup_chrome_driver: {str(e)}")
         return None
 
-def wait_for_element(driver, xpath, timeout=10):
-    """
-    Wait for an element to be present on the page using WebDriverWait.
-    """
-    return WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.XPATH, xpath))
-    )
-
 def extract_data(xpath, driver):
     """
     Extract data from the page using the provided XPath.
@@ -114,23 +90,11 @@ def extract_data(xpath, driver):
     except:
         return "N/A"
 
-def retry_operation(operation, retries=3, delay=5):
-    """
-    Retry an operation multiple times in case of failure.
-    """
-    for attempt in range(retries):
-        try:
-            return operation()
-        except Exception as e:
-            logging.warning(f"Attempt {attempt + 1} failed: {str(e)}")
-            time.sleep(delay)
-    raise Exception("Operation failed after multiple attempts.")
-
 def scrape_google_maps(search_query, driver):
     try:
         # Open Google Maps
         driver.get("https://www.google.com/maps")
-        wait_for_element(driver, '//input[@id="searchboxinput"]')
+        time.sleep(5)  # Wait for the page to load
         
         # Enter the search query into the search box
         search_box = driver.find_element(By.XPATH, '//input[@id="searchboxinput"]')
@@ -183,7 +147,7 @@ def scrape_google_maps(search_query, driver):
         for i, href in enumerate(all_listings):
             try:
                 driver.get(href)
-                wait_for_element(driver, '//h1[contains(@class, "DUwDvf lfPIob")]')
+                time.sleep(3)  # Wait for the sidebar to load
                 
                 # Extract details
                 name = extract_data('//h1[contains(@class, "DUwDvf lfPIob")]', driver)
@@ -208,7 +172,7 @@ def scrape_google_maps(search_query, driver):
         return pd.DataFrame(results) if results else None
     
     except Exception as e:
-        logging.error(f"Error in scrape_google_maps: {str(e)}") 
+        logging.error(f"Error in scrape_google_maps: {str(e)}")  
         return None
 
 def extract_emails_from_text(text):
@@ -241,29 +205,12 @@ def scrape_website_for_emails(url):
             try:
                 contact_response = requests.get(link, timeout=10)
                 contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
-                emails.update(extract_emails_from_text(contact_soup.get_text())) 
+                emails.update(extract_emails_from_text(contact_soup.get_text()))
             except Exception:
                 continue
         
         return list(emails)
     except Exception:
-        return []
-
-def save_results(results, filename="intermediate_results.json"):
-    """
-    Save intermediate results to disk.
-    """
-    with open(filename, 'w') as f:
-        json.dump(results, f)
-
-def load_results(filename="intermediate_results.json"):
-    """
-    Load intermediate results from disk.
-    """
-    try:
-        with open(filename, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
         return []
 
 def main():
@@ -285,13 +232,21 @@ def main():
     st.sidebar.text(f"Platform: {platform.platform()}")
     
     search_query = st.text_input("Enter the search Term Below 👇 (e.g: palm oil, software companies in india)", "")
-    placeholder = st.empty()
+    
+    # Create a container for the button and processing message
+    button_container = st.container()
+    with button_container:
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            scrap_button = st.button("Scrap It!")
+        with col2:
+            placeholder = st.empty()  # Placeholder for processing message
     
     # Table to display results dynamically
     result_table_placeholder = st.empty()
     result_table_data = []
-     
-    if st.button("Scrap It!"):
+    
+    if scrap_button:
         if not search_query.strip():
             st.error("Please enter a valid search query.")
             return
@@ -320,14 +275,9 @@ def main():
                 # Process websites and emails
                 websites = df["Website"].tolist()
                 email_results = []
-                 
+                
                 progress_bar = st.progress(0)
                 for i, website in enumerate(websites):
-                    if shutdown_flag:
-                        logging.info("Shutting down gracefully...")
-                        save_results(result_table_data)
-                        break
-                    
                     if website != "N/A" and isinstance(website, str) and website.strip():
                         urls_to_try = [f"http://{website}", f"https://{website}"]
                         emails_found = []
@@ -349,10 +299,7 @@ def main():
                         "Website": website,
                         "Email": email_results[-1]
                     })
-                    result_table_placeholder.table(result_table_data)
-                    
-                    progress_bar.progress((i + 1) / len(websites))
-                 
+                
                 df["Email"] = email_results
                 
                 # Save to Excel
@@ -361,8 +308,11 @@ def main():
                     with pd.ExcelWriter(output, engine="openpyxl") as writer:
                         df.to_excel(writer, index=False)
                     output.seek(0)
-                     
+                    
+                    # Clear the processing message
                     placeholder.empty()
+                    
+                    # Add success message and download button above the table
                     st.success("Done! 👇Click Download Button Below")
                     st.download_button(
                         label="Download Results",
@@ -370,6 +320,9 @@ def main():
                         file_name="Calibrage Data Extraction.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+                    
+                    # Display the table below the download button
+                    result_table_placeholder.table(result_table_data)
                 except Exception as e:
                     st.error(f"Error saving results: {str(e)}")
             else:
