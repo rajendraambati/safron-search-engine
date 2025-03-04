@@ -340,8 +340,19 @@ def main():
     # Handle Enter key press through form submission
     with st.form(key='search_form'):
         search_query = st.text_input("Enter the search Term Below 👇 (e.g: palm oil, software companies in india)", "")
-        # Hidden submit button that will be triggered by Enter key
-        submit_button = st.form_submit_button("Search", label_visibility="collapsed")
+        # Fixed submit button - removed label_visibility parameter
+        submit_button = st.form_submit_button("Search")
+        # Make the button less conspicuous using CSS
+        st.markdown("""
+        <style>
+        div.stButton button {
+            font-size: 0px;
+            height: 0px;
+            padding: 0px;
+            visibility: hidden;
+        }
+        </style>
+        """, unsafe_allow_html=True)
     
     # Clear results when a new search query is entered
     if search_query != st.session_state.previous_query:
