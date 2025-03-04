@@ -49,10 +49,10 @@ def run_scraping(search_query, progress_bar_placeholder, download_button_placeho
         df = scrape_google_maps(search_query, driver, max_companies=1000)
         
         if df is not None and not df.empty:
-            # Process websites and emails
             websites = df["Website"].tolist()
             email_results = []
             
+            # 4. Show progress bar
             progress_bar = progress_bar_placeholder.progress(0)
             for i, website in enumerate(websites):
                 if website != "N/A" and isinstance(website, str) and website.strip():
@@ -68,12 +68,12 @@ def run_scraping(search_query, progress_bar_placeholder, download_button_placeho
                 else:
                     email_results.append("N/A")
                 
-                # Update the progress bar
+                # Update progress bar
                 progress_bar.progress((i + 1) / len(websites))
             
             df["Email"] = email_results
             
-            # Prepare Excel data for download
+            # Prepare Excel data
             excel_data = io.BytesIO()
             with pd.ExcelWriter(excel_data, engine="openpyxl") as writer:
                 df.to_excel(writer, index=False)
@@ -82,13 +82,13 @@ def run_scraping(search_query, progress_bar_placeholder, download_button_placeho
             # Mark scraping as completed
             st.session_state.scraping_completed = True
             
-            # Display the table
+            # 7. Display results table
             result_table_placeholder.table(df)
             
-            # Show success message
+            # 5. Show success message
             success_message_placeholder.success("Done! 👇Click Download Button Below")
             
-            # Add download button
+            # 6. Add download button
             download_button_placeholder.download_button(
                 label="Download Results",
                 data=excel_data,
@@ -139,17 +139,12 @@ def main():
     search_query = st.text_input("", key="search_input")
     
     # Create placeholders for remaining UI elements
-    progress_bar_placeholder = st.empty()
-    success_message_placeholder = st.empty()
-    download_button_placeholder = st.empty()
-    result_table_placeholder = st.empty()
+    progress_bar_placeholder = st.empty()    # 4
+    success_message_placeholder = st.empty() # 5
+    download_button_placeholder = st.empty() # 6
+    result_table_placeholder = st.empty()    # 7
     
-    # 4. Progress bar (will appear during scraping)
-    # 5. Success message (will appear when done)
-    # 6. Download button (will appear when done)
-    # 7. Results table (will appear when done)
-    
-    # Automatically trigger scraping when text is entered
+    # Trigger scraping when new search query is entered
     if search_query.strip() and search_query != st.session_state.previous_query:
         st.session_state.previous_query = search_query
         run_scraping(
