@@ -274,10 +274,12 @@ def main():
         st.session_state.download_clicked = False
     
     # 4-7. Placeholders for dynamic content
-    progress_placeholder = st.empty()  # 4. Progress bar
-    table_placeholder = st.empty()     # 5. Table
+    progress_placeholder = st.empty()
     success_placeholder = st.empty()   # 6. Success message
-    download_placeholder = st.empty()  # 7. Download button
+    download_placeholder = st.empty()
+    # 4. Progress bar
+    table_placeholder = st.empty()     # 5. Table
+      # 7. Download button
     
     # Trigger scraping on new search queries
     if search_queries and search_queries != st.session_state.previous_queries:
