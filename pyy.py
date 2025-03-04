@@ -341,7 +341,7 @@ def main():
     with st.form(key='search_form'):
         search_query = st.text_input("Enter the search Term Below 👇 (e.g: palm oil, software companies in india)", "")
         # Fixed submit button - removed label_visibility parameter
-        #submit_button = st.form_submit_button("Search")
+        submit_button = st.form_submit_button("Search")
         # Make the button less conspicuous using CSS
         st.markdown("""
         <style>
