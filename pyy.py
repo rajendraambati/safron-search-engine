@@ -224,7 +224,7 @@ def run_scraping(search_query, placeholder, download_button_placeholder, success
         st.error("Please enter a valid search query.")
         return
     
-    placeholder.markdown("**Processing..... Please Wait**")
+    #placeholder.markdown("**Processing..... Please Wait**")
     
     # Initialize Chrome driver with automatic installation
     driver = None
