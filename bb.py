@@ -247,7 +247,6 @@ def run_scraping(search_query, placeholder, download_button_placeholder, success
             websites = df["Website"].tolist()
             email_results = []
             
-            # Show progress bar
             progress_bar = st.progress(0)
             for i, website in enumerate(websites):
                 if website != "N/A" and isinstance(website, str) and website.strip():
@@ -280,10 +279,13 @@ def run_scraping(search_query, placeholder, download_button_placeholder, success
             # Mark scraping as completed
             st.session_state.scraping_completed = True
             
-            # Show success message below the progress bar
+            # Display the table below the search bar
+            result_table_placeholder.table(df)
+            
+            # Show success message
             success_message_placeholder.success("Done! 👇Click Download Button Below")
              
-            # Add download button below the success message
+            # Add download button
             download_button_placeholder.download_button(
                 label="Download Results",
                 data=excel_data,
@@ -291,9 +293,6 @@ def run_scraping(search_query, placeholder, download_button_placeholder, success
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 on_click=lambda: setattr(st.session_state, 'download_clicked', True)
             )
-            
-            # Display the table below the download button
-            result_table_placeholder.table(df)
         else:
             st.warning("No results found for the given search query.")
             
@@ -331,10 +330,9 @@ def main():
         st.session_state.previous_query = ""
     
     # Create placeholders for dynamic updates
-    progress_bar_placeholder = st.empty()
+    result_table_placeholder = st.empty()
     success_message_placeholder = st.empty()
     download_button_placeholder = st.empty()
-    result_table_placeholder = st.empty()
     
     # Handle search input without a button
     search_query = st.text_input("Enter the search Term Below 👇 (e.g: palm oil, software companies in india)", "")
@@ -344,7 +342,7 @@ def main():
         st.session_state.previous_query = search_query
         run_scraping(
             search_query, 
-            progress_bar_placeholder, 
+            st.empty(), 
             download_button_placeholder, 
             success_message_placeholder, 
             result_table_placeholder
@@ -353,10 +351,9 @@ def main():
     # Clear all placeholders and reset UI after download
     if getattr(st.session_state, 'download_clicked', False):
         # Clear all placeholders
-        progress_bar_placeholder.empty()
+        result_table_placeholder.empty()
         success_message_placeholder.empty()
         download_button_placeholder.empty()
-        result_table_placeholder.empty()
         
         # Reset session state variables
         st.session_state.scraping_completed = False
