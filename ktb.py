@@ -250,7 +250,17 @@ def main():
         layout="wide"
     )
     logo_path = "calibrage.png"
-    st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
+    col1, col2 = st.columns([1, 3])  # Create two columns: smaller for logo, larger for title
+
+    with col1:
+        # Display the logo in the first column
+          # Replace with your logo file name or path
+        st.image(logo_path, width=100)  # Adjust width as needed
+
+    with col2:
+        # Display the title in the second column
+        st.title("Calibrage Data Search Engine")
+    #st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
     #st.title(f"{logo_path} Calibrage Data Search Engine")
     
