@@ -250,8 +250,9 @@ def main():
         layout="wide"
     )
     logo_path = "calibrage.png"
+    st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
-    st.title(f"{logo_path} Calibrage Data Search Engine")
+    #st.title(f"{logo_path} Calibrage Data Search Engine")
     
     # 2. Search term instruction
     st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
