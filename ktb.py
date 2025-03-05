@@ -243,13 +243,13 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
                 pass
 
 def main():
-    logo_path = "logo.png"
+    logo_path = "calibrage.png"
     st.set_page_config(
         page_title="Calibrage Info Systems",
         page_icon=logo_path,
         layout="wide"
     )
-    logo_path = "logo.png"
+    logo_path = "calibrage.png"
     # 1. Site title
     st.title(f"{logo_path} Calibrage Data Search Engine")
     
