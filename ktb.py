@@ -250,7 +250,7 @@ def main():
     )
 
     # 1. Site title
-    st.title("🔍 Calibrage Info Systems Data Search Engine")
+    st.title("🔍 Calibrage Data Search Engine")
     
     # 2. Search term instruction
     st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
