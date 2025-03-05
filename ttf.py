@@ -86,7 +86,7 @@ def main():
     # Create a custom header container
     st.markdown("""
     <div class="header">
-        <img src="calibrage.png" class="logo" alt="Calibrage Logo">
+        <img href="calibrage.png" class="logo" alt="Calibrage Logo">
         <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
