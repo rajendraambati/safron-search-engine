@@ -250,50 +250,10 @@ def main():
         layout="wide"
     )
     logo_path = "calibrage.png"
-    def local_css():
-        st.markdown("""
-    <style>
-    /* Remove default Streamlit header padding */
-    .stApp header {
-        padding: 0 !important;
-        max-height: 60px; /* Limit header height */
-    }
     
-    /* Container for logo and title */
-    .custom-header {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 15px; /* Space between logo and text */
-        padding: 10px;
-        background-color: rgba(0,0,0,0.05); /* Optional: light background */
-    }
-    
-    /* Logo styling */
-    .custom-header img {
-        max-height: 40px; /* Limit logo size */
-        object-fit: contain;
-        margin-left: 10px;
-    }
-    
-    /* Title styling */
-    .custom-header h1 {
-        margin: 0;
-        font-size: 1.5rem;
-        color: #333;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-        local_css()
-        st.markdown("""
-    <div class="custom-header">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.png?raw=true" alt="Calibrage Logo">
-        <h1>Calibrage Data Search Engine</h1>
-    </div>
-    """, unsafe_allow_html=True)
-    #st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
+    st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
-    #st.title(f"{logo_path} Calibrage Data Search Engine")
+    st.title(f"{logo_path} Calibrage Data Search Engine")
     
     # 2. Search term instruction
     st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
