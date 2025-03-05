@@ -251,7 +251,7 @@ def main():
     )
     logo_path = "calibrage.png"
     def local_css():
-    st.markdown("""
+        st.markdown("""
     <style>
     /* Remove default Streamlit header padding */
     .stApp header {
@@ -284,12 +284,8 @@ def main():
     }
     </style>
     """, unsafe_allow_html=True)
-
-# Apply custom CSS
-     local_css()
-
-# Create a custom header container
-    st.markdown("""
+        local_css()
+        st.markdown("""
     <div class="custom-header">
         <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.png?raw=true" alt="Calibrage Logo">
         <h1>Calibrage Data Search Engine</h1>
