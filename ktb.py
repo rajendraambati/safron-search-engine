@@ -274,7 +274,7 @@ def main():
     with col1:
         # Display the logo in the first column
         #logo_path = "logo.png"  # Replace with your logo file name or path
-        st.image(logo_path, width=50, output_format="PNG")  # Adjust width as needed
+        st.image(logo_path, width=100, output_format="PNG")  # Adjust width as needed
 
     with col2:
         # Display the title in the second column
