@@ -86,7 +86,7 @@ def main():
     # Create a custom header container
     st.markdown("""
     <div class="header">
-        <img src="https://media.licdn.com/dms/image/v2/C4D0BAQG7ReG72NaW1w/company-logo_200_200/company-logo_200_200/0/1630541973723/calibrage_info_systems_pvt_ltd_logo?e=2147483647&v=beta&t=HrqebByX7zHG7EhbZJwsifc4TprxMpJ1H6mmDzngcGE" class="logo" alt="Calibrage Logo">
+        <img src="https://github.com/rajendraambati/safron-search-engine/edit/main/calibrage.png" class="logo" alt="Calibrage Logo">
         <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
