@@ -243,14 +243,15 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
                 pass
 
 def main():
+    logo_path = "logo.png"
     st.set_page_config(
         page_title="Calibrage Info Systems",
-        page_icon="🔍",
+        page_icon=logo_path,
         layout="wide"
     )
-
+    logo_path = "logo.png"
     # 1. Site title
-    st.title("🔍 Calibrage Data Search Engine")
+    st.title(f"{logo_path} Calibrage Data Search Engine")
     
     # 2. Search term instruction
     st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
