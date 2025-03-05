@@ -13,7 +13,6 @@ import requests
 import io
 import platform
 import logging
-import threading
 
 # Configure logging
 logging.basicConfig(
@@ -23,68 +22,52 @@ logging.basicConfig(
 )
 
 def setup_chrome_driver():
-    """
-    Set up and return a Chrome WebDriver with additional options for cloud environment.
-    """
+    """Set up and return a Chrome WebDriver with additional options for cloud environment."""
     try:
         options = webdriver.ChromeOptions()
-        
-        # Essential options for running in cloud
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        
-        # Additional options to help with stability
         options.add_argument("--disable-features=NetworkService")
         options.add_argument("--window-size=1920x1080")
         options.add_argument("--disable-features=VizDisplayCompositor")
         options.add_argument("--disable-extensions")
         
-        # Try different binary locations
+        # Try setting Chromium binary location
         try:
-            # For Debian/Ubuntu
             options.binary_location = "/usr/bin/chromium"
         except:
             try:
-                # Alternative location
                 options.binary_location = "/usr/bin/chromium-browser"
             except:
                 st.warning("Could not set Chromium binary location.")
 
+        # Attempt to initialize the driver
         try:
-            # First attempt: Try with system chromedriver
             service = Service(executable_path="/usr/bin/chromedriver")
             driver = webdriver.Chrome(service=service, options=options)
             return driver
         except Exception as e:
             logging.error(f"First attempt failed: {str(e)}")
-            
             try:
-                # Second attempt: Try with ChromeDriver Manager
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=options)
                 return driver
             except Exception as e:
                 logging.error(f"Second attempt failed: {str(e)}")
-                
                 try:
-                    # Third attempt: Direct instantiation
                     driver = webdriver.Chrome(options=options)
                     return driver
                 except Exception as e:
-                    logging.error(f"All attempts to initialize Chrome driver failed: {str(e)}")
+                    logging.error(f"All attempts failed: {str(e)}")
                     return None
-                    
     except Exception as e:
         logging.error(f"Error in setup_chrome_driver: {str(e)}")
         return None
 
 def extract_data(xpath, driver):
-    """
-    Extract data from the page using the provided XPath.
-    If the element exists, return its text; otherwise, return "N/A".
-    """
+    """Extract data from the page using the provided XPath."""
     try:
         element = driver.find_element(By.XPATH, xpath)
         return element.text
@@ -92,116 +75,88 @@ def extract_data(xpath, driver):
         return "N/A"
 
 def scrape_google_maps(search_query, driver, max_companies=1000):
+    """Scrape Google Maps for company details based on the search query."""
     try:
-        # Open Google Maps
         driver.get("https://www.google.com/maps")
-        time.sleep(5)  # Wait for the page to load
-        
-        # Enter the search query into the search box
+        time.sleep(5)
         search_box = driver.find_element(By.XPATH, '//input[@id="searchboxinput"]')
         search_box.send_keys(search_query)
         search_box.send_keys(Keys.ENTER)
-        time.sleep(5)  # Wait for results to load
+        time.sleep(5)
         
-        # Zoom out globally to ensure all results are loaded
         actions = ActionChains(driver)
-        for _ in range(10):  # Zoom out multiple times
+        for _ in range(10):
             actions.key_down(Keys.CONTROL).send_keys("-").key_up(Keys.CONTROL).perform()
-            time.sleep(1)  # Wait for the map to adjust
+            time.sleep(1)
         
-        # Scroll and collect all listings
-        all_listings = set()  # Use a set to avoid duplicates
+        all_listings = set()
         previous_count = 0
-        max_scrolls = 50  # Limit the number of scrolls to prevent infinite loops
+        max_scrolls = 50
         scroll_attempts = 0
         
         while scroll_attempts < max_scrolls:
             try:
-                # Scroll down to load more results
                 scrollable_div = driver.find_element(By.XPATH, '//div[contains(@aria-label, "Results for")]')
                 driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
-                time.sleep(3)  # Wait for new results to load
-                
-                # Collect all visible listings
+                time.sleep(3)
                 current_listings = driver.find_elements(By.XPATH, '//a[contains(@href, "https://www.google.com/maps/place")]')
                 current_count = len(current_listings)
                 
-                # Add new listings to the set
                 for listing in current_listings:
                     href = listing.get_attribute("href")
                     if href:
                         all_listings.add(href)
                 
-                # Check if no new results were loaded
                 if current_count == previous_count or len(all_listings) >= max_companies:
                     break
-                
-                # Update the previous count
                 previous_count = current_count
                 scroll_attempts += 1
             except Exception as e:
                 logging.warning(f"Error during scrolling: {str(e)}")
                 break
         
-        # Extract details for each unique listing (up to max_companies)
         results = []
         for i, href in enumerate(all_listings):
             if i >= max_companies:
-                break  # Stop processing if we've reached the maximum number of companies
-            
+                break
             try:
                 driver.get(href)
-                time.sleep(3)  # Wait for the sidebar to load
-                
-                # Extract details
+                time.sleep(3)
                 name = extract_data('//h1[contains(@class, "DUwDvf lfPIob")]', driver)
                 address = extract_data('//button[@data-item-id="address"]//div[contains(@class, "fontBodyMedium")]', driver)
                 phone = extract_data('//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "fontBodyMedium")]', driver)
                 website = extract_data('//a[@data-item-id="authority"]//div[contains(@class, "fontBodyMedium")]', driver)
                 
-                # Append to results
                 results.append({
                     "Name": name,
                     "Address": address,
                     "Phone Number": phone,
                     "Website": website
                 })
-                
-                # Log progress
                 logging.info(f"Scraped company: {name}")
             except Exception as e:
                 logging.warning(f"Error processing listing {i+1}: {str(e)}")
                 continue
         
         return pd.DataFrame(results) if results else None
-    
     except Exception as e:
         logging.error(f"Error in scrape_google_maps: {str(e)}")
         return None
 
 def extract_emails_from_text(text):
-    """
-    Extract email addresses from text using regex.
-    """
+    """Extract email addresses from text using regex."""
     return re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
 
 def scrape_website_for_emails(url):
-    """
-    Scrape a website for email addresses.
-    """
+    """Scrape a website for email addresses."""
     try:
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Extract emails from the homepage
         emails = set(extract_emails_from_text(soup.get_text()))
-        
-        # Check the footer for emails
         footer = soup.find('footer')
         if footer:
             emails.update(extract_emails_from_text(footer.get_text()))
         
-        # Find links to the contact page
         contact_links = [a['href'] for a in soup.find_all('a', href=True) if 'contact' in a['href'].lower()]
         for link in contact_links:
             if not link.startswith("http"):
@@ -212,92 +167,32 @@ def scrape_website_for_emails(url):
                 emails.update(extract_emails_from_text(contact_soup.get_text()))
             except Exception:
                 continue
-        
         return list(emails)
     except Exception:
         return []
 
-def main():
-    st.set_page_config(
-        page_title="Calibrage Info Systems",
-        page_icon="🔍",
-        layout="wide"
-    )
-
-    st.markdown("""
-    """, unsafe_allow_html=True)
+def run_scraping(search_queries, progress_placeholder, table_placeholder, success_placeholder, download_placeholder):
+    """Run scraping for multiple search queries and update results dynamically."""
+    if not search_queries:
+        st.error("Please enter at least one valid search query.")
+        return
     
-    st.title("🔍 Calibrage Info Systems Data Search Engine")
-    
-    # Add version info
-    st.sidebar.markdown("### System Information")
-    st.sidebar.text(f"Python: {platform.python_version()}")
-    st.sidebar.text(f"System: {platform.system()}")
-    st.sidebar.text(f"Platform: {platform.platform()}")
-    
-    # Session state to track if scraping is completed
-    if 'scraping_completed' not in st.session_state:
-        st.session_state.scraping_completed = False
-    if 'scraping_in_progress' not in st.session_state:
-        st.session_state.scraping_in_progress = False
-    if 'progress' not in st.session_state:
-        st.session_state.progress = 0
-    if 'result_table_data' not in st.session_state:
-        st.session_state.result_table_data = []
-    if 'excel_data' not in st.session_state:
-        st.session_state.excel_data = None
-
-    search_query = st.text_input("Enter the search Term Below 👇 (e.g: palm oil, software companies in india)", "")
-    
-    # Create placeholders for download button and success message
-    download_button_placeholder = st.empty()
-    success_message_placeholder = st.empty()
-    
-    # Create a container for the button and processing message
-    button_container = st.empty()  # Use empty() so we can clear it later
-    
-    # Only show the Scrap button if scraping hasn't been completed yet
-    if not st.session_state.scraping_completed:
-        with button_container.container():
-            col1, col2 = st.columns([1, 3])
-            with col1:
-                scrap_button = st.button("Scrap It!")
-            with col2:
-                placeholder = st.empty()  # Placeholder for processing message
-    else:
-        # If scraping is completed, this space will be empty
-        placeholder = st.empty()
-    
-    # Progress bar
-    progress_bar = st.progress(st.session_state.progress)
-    
-    # Table to display results dynamically
-    result_table_placeholder = st.empty()
-    if st.session_state.result_table_data:
-        result_table_placeholder.table(st.session_state.result_table_data)
-    
-    def run_scraping():
-        """Run the scraping process in a background thread."""
-        try:
-            driver = setup_chrome_driver()
-            
-            if driver is None:
-                st.error("""
-                Failed to initialize Chrome driver. This could be due to:
-                1. Chrome browser not installed
-                2. Running in a restricted environment
-                3. System compatibility issues
-                
-                Please check the system information in the sidebar for details.
-                """)
-                return
-            
-            df = scrape_google_maps(search_query, driver)
+    driver = None
+    cumulative_results = []
+    try:
+        driver = setup_chrome_driver()
+        if driver is None:
+            st.error("Failed to initialize Chrome driver.")
+            return
+        
+        for query_index, search_query in enumerate(search_queries):
+            st.session_state.current_query = search_query
+            df = scrape_google_maps(search_query, driver, max_companies=1000)
             
             if df is not None and not df.empty:
-                # Process websites and emails
                 websites = df["Website"].tolist()
                 email_results = []
+                progress_bar = progress_placeholder.progress(0)
                 
                 for i, website in enumerate(websites):
                     if website != "N/A" and isinstance(website, str) and website.strip():
@@ -312,68 +207,112 @@ def main():
                         email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
                     else:
                         email_results.append("N/A")
-                    
-                    # Update the table dynamically
-                    st.session_state.result_table_data.append({
-                        "Name": df.iloc[i]["Name"],
-                        "Address": df.iloc[i]["Address"],
-                        "Phone Number": df.iloc[i]["Phone Number"],
-                        "Website": website,
-                        "Email": email_results[-1]
-                    })
-                    
-                    # Update progress
-                    st.session_state.progress = (i + 1) / len(websites)
-                    progress_bar.progress(st.session_state.progress)
+                    progress_bar.progress((i + 1) / len(websites))
                 
                 df["Email"] = email_results
-                
-                # Prepare Excel data for download
-                excel_data = io.BytesIO()
-                with pd.ExcelWriter(excel_data, engine="openpyxl") as writer:
-                    df.to_excel(writer, index=False)
-                excel_data.seek(0)
-                st.session_state.excel_data = excel_data
-                
-                # Mark scraping as completed
-                st.session_state.scraping_completed = True
-                st.session_state.scraping_in_progress = False
-                
-                # Show success message
-                success_message_placeholder.success("Done! 👇Click Download Button Below")
-                
-                # Add download button
-                download_button_placeholder.download_button(
-                    label="Download Results",
-                    data=st.session_state.excel_data,
-                    file_name="Calibrage Data Extraction.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                cumulative_results.append(df)
+                combined_df = pd.concat(cumulative_results, ignore_index=True)
+                table_placeholder.table(combined_df)
+                success_placeholder.success(f"Query {query_index + 1}/{len(search_queries)} completed.")
             else:
-                st.warning("No results found for the given search query.")
-                
-        except Exception as e:
-            st.error(f"An error occurred during scraping: {str(e)}")
-        finally:
-            if driver:
-                try:
-                    driver.quit()
-                except:
-                    pass
+                st.warning(f"No results found for the query: {search_query}") 
+        
+        if cumulative_results:
+            combined_df = pd.concat(cumulative_results, ignore_index=True)
+            excel_data = io.BytesIO()
+            with pd.ExcelWriter(excel_data, engine="openpyxl") as writer:
+                combined_df.to_excel(writer, index=False)
+            excel_data.seek(0)
+            
+            st.session_state.scraping_completed = True
+            success_placeholder.success("All queries completed! 👇 Click Download Button Below")
+            download_placeholder.download_button(
+                label="Download Results",
+                data=excel_data,
+                file_name="Calibrage_Data_Extraction.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                on_click=lambda: setattr(st.session_state, 'download_clicked', True)
+            )
+        else:
+            st.warning("No results found for any of the queries.")
+    except Exception as e:
+        st.error(f"An error occurred during scraping: {str(e)}")
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
 
-    if scrap_button:
-        if not search_query.strip():
-            st.error("Please enter a valid search query.")
-            return
-        
-        if st.session_state.scraping_in_progress:
-            st.warning("Scraping is already in progress. Please wait.")
-            return
-        
-        # Start scraping in a background thread
-        st.session_state.scraping_in_progress = True
-        placeholder.markdown("**Processing..... Please Wait**")
-        threading.Thread(target=run_scraping).start()
+def main():
+    logo_path = "calibrage.png"
+    st.set_page_config(
+        page_title="Calibrage Info Systems",
+        page_icon=logo_path,
+        layout="wide"
+    )
+
+    def local_css():
+        st.markdown("""
+        <style>
+        /* Add custom CSS here */
+        </style>
+        """, unsafe_allow_html=True)
+
+    # Apply custom CSS
+    local_css()
+
+    # Create a custom header container
+    st.markdown("""
+    <h1 style='text-align: center;'>Calibrage Data Search Engine</h1>
+    """, unsafe_allow_html=True)
+
+    # Search term instruction
+    st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
+    
+    # Search term input
+    search_input = st.text_input("", key="search_input")
+    search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
+    
+    # Sidebar system info
+    st.sidebar.markdown("### System Information")
+    st.sidebar.text(f"Python: {platform.python_version()}")
+    st.sidebar.text(f"System: {platform.system()}")
+    st.sidebar.text(f"Platform: {platform.platform()}")
+    
+    # Session state initialization
+    if 'scraping_completed' not in st.session_state:
+        st.session_state.scraping_completed = False
+    if 'previous_queries' not in st.session_state:
+        st.session_state.previous_queries = []
+    if 'download_clicked' not in st.session_state:
+        st.session_state.download_clicked = False
+    
+    # Placeholders for dynamic content
+    progress_placeholder = st.empty()
+    success_placeholder = st.empty()
+    download_placeholder = st.empty()
+    table_placeholder = st.empty()
+    
+    # Trigger scraping on new search queries
+    if search_queries and search_queries != st.session_state.previous_queries:
+        st.session_state.previous_queries = search_queries
+        run_scraping(
+            search_queries,
+            progress_placeholder,
+            table_placeholder,
+            success_placeholder,
+            download_placeholder
+        )
+    
+    # Clear UI after download
+    if st.session_state.download_clicked:
+        progress_placeholder.empty()
+        table_placeholder.empty()
+        success_placeholder.empty()
+        download_placeholder.empty()
+        st.session_state.scraping_completed = False
+        st.session_state.download_clicked = False
 
 if __name__ == "__main__":
     main()
