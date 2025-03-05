@@ -250,16 +250,30 @@ def main():
         layout="wide"
     )
     logo_path = "calibrage.png"
+    st.markdown("""
+    <style>
+        .logo-title-container {
+            display: flex;
+            align-items: center; /* Align items vertically */
+            gap: 10px; /* Reduce the gap between logo and title */
+        }
+        .logo {
+            margin-right: 10px; /* Fine-tune spacing if needed */
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Add logo and title side by side
     col1, col2 = st.columns([1, 3])  # Create two columns: smaller for logo, larger for title
 
     with col1:
         # Display the logo in the first column
-          # Replace with your logo file name or path
-        st.image(logo_path, width=50)  # Adjust width as needed
+        #logo_path = "logo.png"  # Replace with your logo file name or path
+        st.image(logo_path, width=100, output_format="PNG")  # Adjust width as needed
 
     with col2:
         # Display the title in the second column
-        st.title("Calibrage Data Search Engine")
+        st.markdown('<div class="logo-title-container"><h1 style="margin: 0;">Calibrage Data Search Engine</h1></div>', unsafe_allow_html=True)
     #st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
     #st.title(f"{logo_path} Calibrage Data Search Engine")
