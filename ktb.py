@@ -253,12 +253,17 @@ def main():
     st.markdown("""
     <style>
         .logo-title-container {
-            display: flex;
-            align-items: center; /* Align items vertically */
-            gap: 10px; /* Reduce the gap between logo and title */
+            display: flex;               /* Use flexbox for layout */
+            align-items: center;         /* Align items vertically */
+            gap: 5px;                    /* Reduce the gap between logo and title */
         }
         .logo {
-            margin-right: 10px; /* Fine-tune spacing if needed */
+            margin-right: 5px;           /* Fine-tune spacing if needed */
+        }
+        .title {
+            margin: 0;                   /* Remove default margins from the title */
+            font-size: 2rem;             /* Adjust font size if necessary */
+            font-weight: bold;           /* Make the title bold */
         }
     </style>
     """, unsafe_allow_html=True)
@@ -269,11 +274,11 @@ def main():
     with col1:
         # Display the logo in the first column
         #logo_path = "logo.png"  # Replace with your logo file name or path
-        st.image(logo_path, width=100, output_format="PNG")  # Adjust width as needed
+        st.image(logo_path, width=50, output_format="PNG")  # Adjust width as needed
 
     with col2:
         # Display the title in the second column
-        st.markdown('<div class="logo-title-container"><h1 style="margin: 0;">Calibrage Data Search Engine</h1></div>', unsafe_allow_html=True)
+        st.markdown('<div class="logo-title-container"><span class="title">Calibrage Data Search Engine</span></div>', unsafe_allow_html=True)
     #st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
     #st.title(f"{logo_path} Calibrage Data Search Engine")
