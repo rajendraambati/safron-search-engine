@@ -286,15 +286,15 @@ def main():
     """, unsafe_allow_html=True)
 
 # Apply custom CSS
-local_css()
+     local_css()
 
 # Create a custom header container
-st.markdown("""
+    st.markdown("""
     <div class="custom-header">
         <img src="calibrage.png" alt="Calibrage Logo">
         <h1>Calibrage Data Search Engine</h1>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     #st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
     #st.title(f"{logo_path} Calibrage Data Search Engine")
