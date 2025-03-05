@@ -250,35 +250,51 @@ def main():
         layout="wide"
     )
     logo_path = "calibrage.png"
+    def local_css():
     st.markdown("""
     <style>
-        .logo-title-container {
-            display: flex;               /* Use flexbox for layout */
-            align-items: center;         /* Align items vertically */
-            gap: 5px;                    /* Reduce the gap between logo and title */
-        }
-        .logo {
-            margin-right: 5px;           /* Fine-tune spacing if needed */
-        }
-        .title {
-            margin: 0;                   /* Remove default margins from the title */
-            font-size: 2rem;             /* Adjust font size if necessary */
-            font-weight: bold;           /* Make the title bold */
-        }
+    /* Remove default Streamlit header padding */
+    .stApp header {
+        padding: 0 !important;
+        max-height: 60px; /* Limit header height */
+    }
+    
+    /* Container for logo and title */
+    .custom-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 15px; /* Space between logo and text */
+        padding: 10px;
+        background-color: rgba(0,0,0,0.05); /* Optional: light background */
+    }
+    
+    /* Logo styling */
+    .custom-header img {
+        max-height: 40px; /* Limit logo size */
+        object-fit: contain;
+        margin-left: 10px;
+    }
+    
+    /* Title styling */
+    .custom-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #333;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-    # Add logo and title side by side
-    col1, col2 = st.columns([1, 3])  # Create two columns: smaller for logo, larger for title
+# Apply custom CSS
+local_css()
 
-    with col1:
-        # Display the logo in the first column
-        #logo_path = "logo.png"  # Replace with your logo file name or path
-        st.image(logo_path, width=100, output_format="PNG")  # Adjust width as needed
-
-    with col2:
-        # Display the title in the second column
-        st.markdown('<div class="logo-title-container"><span class="title">Calibrage Data Search Engine</span></div>', unsafe_allow_html=True)
+# Create a custom header container
+st.markdown("""
+    <div class="custom-header">
+        <img src="calibrage.png" alt="Calibrage Logo">
+        <h1>Calibrage Data Search Engine</h1>
+    </div>
+""", unsafe_allow_html=True)
     #st.image(logo_path, caption="Calibrage Data Search Engine", width=200)
     # 1. Site title
     #st.title(f"{logo_path} Calibrage Data Search Engine")
