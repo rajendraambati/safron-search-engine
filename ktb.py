@@ -291,7 +291,7 @@ def main():
 # Create a custom header container
     st.markdown("""
     <div class="custom-header">
-        <img src="calibrage.png" alt="Calibrage Logo">
+        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.png?raw=true" alt="Calibrage Logo">
         <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
