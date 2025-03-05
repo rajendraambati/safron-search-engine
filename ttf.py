@@ -92,7 +92,7 @@ def main():
     """, unsafe_allow_html=True)
 
     # Search term instruction
-    st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
+    #st.write("Enter multiple search terms below (separated by commas). Example: palm oil, software companies in india")
 
     # Search term input with placeholder
     search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input")
