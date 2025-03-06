@@ -244,7 +244,7 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
                 pass
 def main():
     # Custom logo path
-    logo_path = "calibrage.png"
+    logo_path = "calibrage.jpg"
 
     # Set page configuration
     st.set_page_config(
@@ -252,7 +252,6 @@ def main():
         page_icon=logo_path,
         layout="wide"
     )
-
     # Apply custom CSS for styling
     def local_css():
         st.markdown("""
