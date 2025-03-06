@@ -12,7 +12,7 @@ import time
 import re
 from bs4 import BeautifulSoup
 import requests
-import io
+import io 
 import platform
 import logging
 import os
@@ -88,7 +88,6 @@ def setup_chrome_driver():
 def extract_data(xpath, driver, wait_time=5):
     """Extract data from the page using the provided XPath with waiting."""
     try:
-        # Wait for the element to be present
         WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located((By.XPATH, xpath))
         )
@@ -121,7 +120,7 @@ def scrape_google_maps(search_query, driver, max_companies=50):
         
         # Navigate to Google Maps
         driver.get("https://www.google.com/maps")
-        time.sleep(7)  # Increased wait time for initial page load
+        time.sleep(7)
         
         # Check if search box is available
         try:
@@ -138,7 +137,6 @@ def scrape_google_maps(search_query, driver, max_companies=50):
                 logging.info("Alternative search box found")
             except:
                 logging.error("Could not find any search input")
-                # Save screenshot for debugging
                 driver.save_screenshot("maps_error.png")
                 return None
         
@@ -147,7 +145,7 @@ def scrape_google_maps(search_query, driver, max_companies=50):
         search_box.send_keys(search_query)
         search_box.send_keys(Keys.ENTER)
         logging.info(f"Submitted query: {search_query}")
-        time.sleep(7)  # Increased wait time for search results
+        time.sleep(7)
         
         # Zoom out to see more results
         actions = ActionChains(driver)
@@ -162,7 +160,7 @@ def scrape_google_maps(search_query, driver, max_companies=50):
         # Collect all listings by scrolling
         all_listings = set()
         previous_count = 0
-        max_scrolls = 20  # Reduced from 50 to make the process faster
+        max_scrolls = 20
         scroll_attempts = 0
         
         # Try different selectors for the results container
@@ -243,12 +241,12 @@ def scrape_google_maps(search_query, driver, max_companies=50):
             try:
                 logging.info(f"Processing listing {i+1}/{len(all_listings)}: {href}")
                 driver.get(href)
-                time.sleep(5)  # Wait for page to load
+                time.sleep(5)
                 
                 # Try multiple selectors for each data type
                 selectors = {
                     "Name": [
-                        '//h1[contains(@class, "DUwDvf")]',
+                        '//h1[contains(@class, "DUwDvf")]', 
                         '//h1',
                         '//div[contains(@class, "fontHeadlineLarge")]'
                     ],
@@ -388,7 +386,7 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
                                 emails = scrape_website_for_emails(url)
                                 if emails:
                                     emails_found.extend(emails)
-                                    break  # If found emails, no need to try other URL variants
+                                    break
                             except Exception as e:
                                 logging.warning(f"Error scraping emails from {url}: {str(e)}")
                         
@@ -399,7 +397,7 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
                     # Update progress
                     progress_bar.progress((i + 1) / len(websites))
                 
-                # Add emails to dataframe
+                # Add emails to dataframe 
                 df["Email"] = email_results
                 cumulative_results.append(df)
                 
@@ -443,58 +441,23 @@ def main():
     # Set page configuration
     st.set_page_config(
         page_title="Calibrage Data Search Engine",
-        page_icon="📊",
+        page_icon="🔍",
         layout="wide"
     )
 
     # Apply custom CSS for styling
     st.markdown("""
     <style>
-        /* Center align the header */
-        .header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        /* Style for the logo */
-        .logo {
-            width: 150px;
-            margin-bottom: 10px;
-        }
-        /* Search box styling */
-        .stTextInput > div > div > input {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-        }
-        /* Button styling */
-        .stButton > button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .stButton > button:hover {
-            background-color: #45a049;
-        }
-        /* Hide the sidebar */
-        [data-testid="stSidebar"] {
-            display: none;
-        }
+        .main { padding: 2rem; }
+        .stButton>button { background-color: #4CAF50; color: white; }
+        .stDownloadButton>button { background-color: #008CBA; }
     </style>
     """, unsafe_allow_html=True)
 
     # Create a custom header container
     st.markdown("""
-    <div class="header">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.png?raw=true" class="logo" alt="Calibrage Logo">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.png?raw=true" width="200">
         <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
@@ -532,12 +495,12 @@ Platform: {platform.platform()}
 
     # Placeholders for dynamic content
     progress_placeholder = st.empty()
-    success_placeholder = st.empty()   # Success message
+    success_placeholder = st.empty()
     download_placeholder = st.empty()
-    table_placeholder = st.empty()     # Table
+    table_placeholder = st.empty()
 
     # Search button
-    if st.button("🔎 Search"):
+    if st.button("🔍 Search"):
         if search_queries:
             progress_placeholder.info("Starting search process...")
             st.session_state.previous_queries = search_queries
@@ -564,9 +527,7 @@ Platform: {platform.platform()}
     st.markdown("---")
     st.markdown(
         """
-        <div style="text-align:center">
-            <p>© 2025 Calibrage Data Search Engine | For business inquiries only</p>
-        </div>
+        © 2025 Calibrage Data Search Engine | For business inquiries only
         """, 
         unsafe_allow_html=True
     )
