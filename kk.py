@@ -457,7 +457,7 @@ def main():
     # Create a custom header container
     st.markdown("""
     <div style="text-align: center; margin-bottom: 2rem;">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.png?raw=true" width="200">
+        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.jpg" width="200">
         <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
