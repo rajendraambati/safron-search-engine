@@ -5,8 +5,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 import re
@@ -15,8 +13,6 @@ import requests
 import io
 import platform
 import logging
-import os
-import sys
 
 # Configure logging
 logging.basicConfig(
@@ -25,185 +21,120 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
+
 def setup_chrome_driver():
-    """Set up and return a Chrome WebDriver with additional options for Linux environment."""
+    """Set up and return a Chrome WebDriver with additional options for cloud environment."""
     try:
-        logging.info(f"Setting up Chrome driver for: Python {sys.version}, {platform.system()} {platform.release()}")
-        
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1920x1080")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-features=VizDisplayCompositor")
         options.add_argument("--disable-features=NetworkService")
-        options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+        options.add_argument("--window-size=1920x1080")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--disable-extensions")
         
-        # Check for common Chromium paths in Linux
-        linux_chrome_paths = [
-            "/usr/bin/chromium",
-            "/usr/bin/chromium-browser",
-            "/usr/bin/google-chrome",
-            "/usr/bin/google-chrome-stable"
-        ]
-        
-        chrome_path = None
-        for path in linux_chrome_paths:
-            if os.path.exists(path):
-                chrome_path = path
-                logging.info(f"Found Chrome/Chromium at: {chrome_path}")
-                break
-        
-        if chrome_path:
-            options.binary_location = chrome_path
-        
-        # Try multiple methods to initialize the driver
-        driver_attempts = [
-            lambda: webdriver.Chrome(service=Service(executable_path="/usr/bin/chromedriver"), options=options),
-            lambda: webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options),
-            lambda: webdriver.Chrome(options=options)
-        ]
-        
-        for i, attempt in enumerate(driver_attempts, 1):
+        try:
+            options.binary_location = "/usr/bin/chromium"
+        except:
             try:
-                driver = attempt()
-                logging.info(f"Chrome driver initialized successfully (method {i})")
+                options.binary_location = "/usr/bin/chromium-browser"
+            except:
+                st.warning("Could not set Chromium binary location.")
+
+        try:
+            service = Service(executable_path="/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
+            return driver 
+        except Exception as e:
+            logging.error(f"First attempt failed: {str(e)}")
+            try:
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
                 return driver
             except Exception as e:
-                logging.error(f"Attempt {i} failed: {str(e)}")
-        
-        return None
+                logging.error(f"Second attempt failed: {str(e)}")
+                try:
+                    driver = webdriver.Chrome(options=options)
+                    return driver
+                except Exception as e:
+                    logging.error(f"All attempts failed: {str(e)}")
+                    return None
     except Exception as e:
-        logging.error(f"Driver setup failed: {str(e)}")
+        logging.error(f"Error in setup_chrome_driver: {str(e)}")
         return None
 
-def extract_data(xpath, driver, wait_time=10):
-    """Extract data from the page using the provided XPath with waiting."""
+def extract_data(xpath, driver):
+    """Extract data from the page using the provided XPath."""
     try:
-        WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((By.XPATH, xpath))
-        )
         element = driver.find_element(By.XPATH, xpath)
-        return element.text.strip()
-    except Exception as e:
-        logging.warning(f"Failed to extract data with XPath '{xpath}': {str(e)}")
+        return element.text
+    except:
         return "N/A"
 
-def try_alternative_selectors(driver, selectors_dict):
-    """Try multiple selectors for each data point and use the first one that works."""
-    results = {}
-    for data_type, selector_list in selectors_dict.items():
-        for selector in selector_list:
-            try:
-                element = driver.find_element(By.XPATH, selector)
-                if element and element.text.strip():
-                    results[data_type] = element.text.strip()
-                    break
-            except:
-                continue
-        results[data_type] = results.get(data_type, "N/A")
-    return results
-
-def scrape_google_maps(search_query, driver, max_companies=50):
-    """Scrape Google Maps for company details with more robust handling."""
+def scrape_google_maps(search_query, driver, max_companies=1000):
+    """Scrape Google Maps for company details based on the search query."""
     try:
-        logging.info(f"Starting to scrape Google Maps for: '{search_query}'")
-        
-        # Navigate to Google Maps
         driver.get("https://www.google.com/maps")
         time.sleep(5)
-        
-        # Handle consent popup if present
-        try:
-            consent_button = driver.find_element(By.XPATH, '//button[@aria-label="Accept all"]')
-            consent_button.click()
-            time.sleep(2)
-        except:
-            pass
-        
-        # Enter search query
-        search_box = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '//input[@id="searchboxinput"]'))
-        )
-        search_box.clear()
+        search_box = driver.find_element(By.XPATH, '//input[@id="searchboxinput"]')
         search_box.send_keys(search_query)
         search_box.send_keys(Keys.ENTER)
         time.sleep(5)
         
-        # Zoom out to see more results
-        for _ in range(5):
-            ActionChains(driver).key_down(Keys.CONTROL).send_keys("-").key_up(Keys.CONTROL).perform()
-            time.sleep(0.5)
-        
-        # Scroll and collect results
-        scrollable_div = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '//div[@role="feed"]'))
-        )
+        actions = ActionChains(driver)
+        for _ in range(10):
+            actions.key_down(Keys.CONTROL).send_keys("-").key_up(Keys.CONTROL).perform()
+            time.sleep(1)
         
         all_listings = set()
-        prev_height = 0
+        previous_count = 0
+        max_scrolls = 50
         scroll_attempts = 0
         
-        while scroll_attempts < 20:
-            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
-            time.sleep(3)
-            
-            # Extract listings
-            listings = driver.find_elements(By.XPATH, '//a[contains(@href, "/maps/place/")]')
-            current_listings = [listing.get_attribute("href") for listing in listings]
-            all_listings.update(current_listings)
-            
-            # Check if we've reached the bottom
-            new_height = driver.execute_script("return arguments[0].scrollHeight", scrollable_div)
-            if new_height == prev_height:
+        while scroll_attempts < max_scrolls:
+            try:
+                scrollable_div = driver.find_element(By.XPATH, '//div[contains(@aria-label, "Results for")]')
+                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
+                time.sleep(3)
+                current_listings = driver.find_elements(By.XPATH, '//a[contains(@href, "https://www.google.com/maps/place")]')
+                current_count = len(current_listings)
+                
+                for listing in current_listings:
+                    href = listing.get_attribute("href")
+                    if href:
+                        all_listings.add(href)
+                
+                if current_count == previous_count or len(all_listings) >= max_companies:
+                    break
+                previous_count = current_count
+                scroll_attempts += 1
+            except Exception as e:
+                logging.warning(f"Error during scrolling: {str(e)}")
                 break
-            prev_height = new_height
-            scroll_attempts += 1
         
-        # Process each listing
         results = []
-        for i, href in enumerate(all_listings):
+        for i, href in enumerate(all_listings): 
             if i >= max_companies:
                 break
-                
             try:
                 driver.get(href)
-                time.sleep(5)
-                
-                # Extract details with multiple selectors
-                selectors = {
-                    "Name": [
-                        '//h1[contains(@class, "DUwDvf")]',
-                        '//h1[@class="fontHeadlineLarge"]'
-                    ],
-                    "Address": [
-                        '//button[@data-item-id="address"]//div[@class="fontBodyMedium"]',
-                        '//div[contains(text(), "Address")]/following-sibling::div'
-                    ],
-                    "Phone": [
-                        '//button[@data-item-id="phone:tel:"]//div[@class="fontBodyMedium"]',
-                        '//div[contains(text(), "Phone")]/following-sibling::div'
-                    ],
-                    "Website": [
-                        '//a[@data-item-id="authority"]//div[@class="fontBodyMedium"]',
-                        '//a[contains(@aria-label, "Website")]'
-                    ]
-                }
-                
-                data = try_alternative_selectors(driver, selectors)
+                time.sleep(3)
+                name = extract_data('//h1[contains(@class, "DUwDvf lfPIob")]', driver)
+                address = extract_data('//button[@data-item-id="address"]//div[contains(@class, "fontBodyMedium")]', driver)
+                phone = extract_data('//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "fontBodyMedium")]', driver)
+                website = extract_data('//a[@data-item-id="authority"]//div[contains(@class, "fontBodyMedium")]', driver)
                 
                 results.append({
-                    "Name": data["Name"],
-                    "Address": data["Address"],
-                    "Phone Number": data["Phone"],
-                    "Website": data["Website"]
+                    "Name": name,
+                    "Address": address,
+                    "Phone Number": phone,
+                    "Website": website
                 })
-                
-                logging.info(f"Processed {i+1}/{len(all_listings)}: {data['Name']}")
+                logging.info(f"Scraped company: {name}")
             except Exception as e:
-                logging.warning(f"Error processing {href}: {str(e)}")
+                logging.warning(f"Error processing listing {i+1}: {str(e)}")
                 continue
         
         return pd.DataFrame(results) if results else None
@@ -215,38 +146,31 @@ def extract_emails_from_text(text):
     """Extract email addresses from text using regex."""
     return re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
 
-def scrape_website_for_emails(url, timeout=15):
-    """Scrape a website for email addresses with increased timeout."""
+def scrape_website_for_emails(url):
+    """Scrape a website for email addresses."""
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
-        response = requests.get(url, timeout=timeout, headers=headers)
+        response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.content, 'html.parser')
         emails = set(extract_emails_from_text(soup.get_text()))
-        
-        # Check footer
         footer = soup.find('footer')
         if footer:
             emails.update(extract_emails_from_text(footer.get_text()))
         
-        # Check contact pages
-        for a in soup.find_all('a', href=True):
-            if 'contact' in a['href'].lower() or 'about' in a['href'].lower():
-                full_url = a['href'] if a['href'].startswith('http') else f"{url}/{a['href']}"
-                try:
-                    contact_response = requests.get(full_url, timeout=timeout, headers=headers)
-                    contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
-                    emails.update(extract_emails_from_text(contact_soup.get_text()))
-                except:
-                    continue
-        
+        contact_links = [a['href'] for a in soup.find_all('a', href=True) if 'contact' in a['href'].lower()]
+        for link in contact_links:
+            if not link.startswith("http"):
+                link = url.rstrip("/") + "/" + link.lstrip("/")
+            try:
+                contact_response = requests.get(link, timeout=10)
+                contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
+                emails.update(extract_emails_from_text(contact_soup.get_text()))
+            except Exception:
+                continue 
         return list(emails)
-    except Exception as e:
-        logging.warning(f"Error scraping emails from {url}: {str(e)}")
+    except Exception:
         return []
 
-def run_scraping(search_queries, progress, table, success, download):
+def run_scraping(search_queries, progress_placeholder, table_placeholder, success_placeholder, download_placeholder):
     """Run scraping for multiple search queries and update results dynamically."""
     if not search_queries:
         st.error("Please enter at least one valid search query.")
@@ -254,118 +178,174 @@ def run_scraping(search_queries, progress, table, success, download):
     
     driver = None
     cumulative_results = []
-    
     try:
-        # Initialize Chrome driver
-        progress.info("Setting up web browser...")
         driver = setup_chrome_driver()
-        
         if driver is None:
-            st.error("Failed to initialize Chrome driver. Please check system compatibility.")
+            st.error("Failed to initialize Chrome driver.")
             return
         
-        for query in search_queries:
-            progress.info(f"Processing: {query}")
-            df = scrape_google_maps(query, driver)
+        for query_index, search_query in enumerate(search_queries):
+            st.session_state.current_query = search_query
+            df = scrape_google_maps(search_query, driver, max_companies=1000)
             
             if df is not None and not df.empty:
-                # Extract emails
-                progress.info("Extracting email addresses...")
-                df["Email"] = df["Website"].apply(lambda url: 
-                    ", ".join(scrape_website_for_emails(url)) if url != "N/A" else "N/A"
-                )
+                websites = df["Website"].tolist()
+                email_results = []
+                progress_bar = progress_placeholder.progress(0)
                 
+                for i, website in enumerate(websites):
+                    if website != "N/A" and isinstance(website, str) and website.strip():
+                        urls_to_try = [f"http://{website}", f"https://{website}"]
+                        emails_found = []
+                        for url in urls_to_try:
+                            try:
+                                emails = scrape_website_for_emails(url)
+                                emails_found.extend(emails)
+                            except Exception as e:
+                                logging.warning(f"Error scraping emails from {url}: {str(e)}")
+                        email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
+                    else:
+                        email_results.append("N/A")
+                    progress_bar.progress((i + 1) / len(websites))
+                
+                df["Email"] = email_results
                 cumulative_results.append(df)
-                table.dataframe(pd.concat(cumulative_results))
-                success.success(f"✅ Processed '{query}' ({len(df)} results)")
+                combined_df = pd.concat(cumulative_results, ignore_index=True)
+                table_placeholder.table(combined_df)
+                success_placeholder.success(f"Query {query_index + 1}/{len(search_queries)} completed.")
             else:
-                st.warning(f"No results found for: {query}")
+                st.warning(f"No results found for the query: {search_query}")
         
-        # Create download button
         if cumulative_results:
-            final_df = pd.concat(cumulative_results)
-            excel = io.BytesIO()
-            with pd.ExcelWriter(excel, engine="openpyxl") as writer:
-                final_df.to_excel(writer, index=False)
-            excel.seek(0)
+            combined_df = pd.concat(cumulative_results, ignore_index=True)
+            excel_data = io.BytesIO()
+            with pd.ExcelWriter(excel_data, engine="openpyxl") as writer:
+                combined_df.to_excel(writer, index=False)
+            excel_data.seek(0)
             
-            download.download_button(
-                label="Download Results (Excel)",
-                data=excel,
-                file_name="calibrage_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            st.session_state.scraping_completed = True
+            success_placeholder.success("All queries completed! 👇 Click Download Button Below")
+            download_placeholder.download_button(
+                label="Download Results",
+                data=excel_data,
+                file_name="Calibrage_Data_Extraction.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                on_click=lambda: setattr(st.session_state, 'download_clicked', True)
             )
+        else:
+            st.warning("No results found for any of the queries.")
     except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
+        st.error(f"An error occurred during scraping: {str(e)}")
     finally:
         if driver:
-            driver.quit()
+            try:
+                driver.quit()
+            except:
+                pass
+# ... (previous imports and setup remains the same)
 
 def main():
-    # Page configuration
+    # Custom logo path
+    logo_path = "calibrage.jpg"
+
+    # Set page configuration
     st.set_page_config(
-        page_title="Calibrage Data Search",
-        page_icon="🔍",
+        page_title="Calibrage Data Search Engine",
+        page_icon=logo_path,
         layout="wide"
     )
 
-    # Custom CSS
-    st.markdown("""
-    <style>
-        .stButton>button { background-color: #4CAF50; color: white; }
-        .stDownloadButton>button { background-color: #008CBA; }
-        .main { padding: 2rem; }
-    </style>
-    """, unsafe_allow_html=True)
+    # Apply custom CSS for styling
+    def local_css():
+        st.markdown("""
+        <style>
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 1rem;
+        }
+        .stButton>button {
+            margin: 0 0.5rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-    # Header
+    local_css()
+
+    # Create a custom header container
     st.markdown("""
     <div style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="color: #2c3e50;">Calibrage Data Search Engine</h1>
+        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.jpg?raw=true" width="200"/>
+        <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
 
-    # Input section
-    with st.form("search_form", clear_on_submit=False):
-        st.text_input(
-            label="Enter search terms (comma-separated)",
-            placeholder="e.g., palm oil companies in guntur",
-            key="search_input",
-            label_visibility="visible"
-        )
-        col1, col2 = st.columns(2)
-        with col1:
-            max_results = st.slider("Max results per query", 10, 100, 50)
-        with col2:
-            wait_time = st.slider("Page load wait time (sec)", 3, 10, 5)
-        submitted = st.form_submit_button("🔍 Search")
+    # Search input and buttons
+    col1, col2, col3 = st.columns([4, 1, 1])
+    with col1:
+        search_input = st.text_input("", placeholder="Enter search terms separated by commas...", key="search_input")
+    with col2:
+        search_button = st.button("Search", use_container_width=True)
+    with col3:
+        clear_button = st.button("Clear", use_container_width=True)
 
     # Initialize session state
+    if 'start_scraping' not in st.session_state:
+        st.session_state.start_scraping = False
+    if 'scraping_completed' not in st.session_state:
+        st.session_state.scraping_completed = False
     if 'download_clicked' not in st.session_state:
         st.session_state.download_clicked = False
 
-    # Process search
-    if submitted:
-        search_queries = [q.strip() for q in st.session_state.search_input.split(",") if q.strip()]
-        if search_queries:
-            progress = st.empty()
-            table = st.empty()
-            success = st.empty()
-            download = st.empty()
-            
-            run_scraping(
-                search_queries=search_queries,
-                progress=progress,
-                table=table,
-                success=success,
-                download=download
-            )
-        else:
-            st.error("Please enter at least one search term")
+    # Placeholders for dynamic content
+    progress_placeholder = st.empty()
+    success_placeholder = st.empty()
+    download_placeholder = st.empty()
+    table_placeholder = st.empty()
 
-    # Footer
-    st.markdown("---")
-    st.markdown("© 2025 Calibrage Data Search Engine | For business inquiries only", unsafe_allow_html=True)
+    # Clear button logic
+    if clear_button:
+        st.session_state.start_scraping = False
+        st.session_state.scraping_completed = False
+        st.session_state.download_clicked = False
+        progress_placeholder.empty()
+        table_placeholder.empty()
+        success_placeholder.empty()
+        download_placeholder.empty()
+        st.experimental_rerun()  # Force UI refresh
+
+    # Search button logic
+    if search_button and not st.session_state.start_scraping:
+        search_queries = [q.strip() for q in search_input.split(",") if q.strip()]
+        if not search_queries:
+            st.error("Please enter valid search terms.")
+        else:
+            st.session_state.start_scraping = True
+            st.session_state.search_queries = search_queries
+            st.session_state.scraping_completed = False
+            st.experimental_rerun()
+
+    # Trigger scraping process
+    if st.session_state.get('start_scraping', False):
+        run_scraping(
+            st.session_state.search_queries,
+            progress_placeholder,
+            table_placeholder,
+            success_placeholder,
+            download_placeholder
+        )
+        st.session_state.start_scraping = False
+        st.session_state.scraping_completed = True
+
+    # Handle download button click
+    if st.session_state.get('scraping_completed', False) and not st.session_state.download_clicked:
+        with download_placeholder:
+            st.download_button(
+                label="Download Results",
+                data=st.session_state.get('excel_data', io.BytesIO()),
+                file_name="Calibrage_Data_Extraction.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key='download'
+            )
 
 if __name__ == "__main__":
     main()
