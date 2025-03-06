@@ -223,61 +223,7 @@ def main():
         layout="wide"
     )
 
-    # Apply custom CSS for styling
-    def local_css():
-        st.markdown("""
-        <style>
-            /* Center align the header */
-            .header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            /* Style for the logo */
-            .logo {
-                width: 150px;
-                margin-bottom: 10px;
-            }
-            /* Search box styling */
-            .stTextInput > div > div > input {
-                padding: 10px;
-                font-size: 16px;
-                border-radius: 10px;
-                border: 1px solid #ccc;
-            }
-            /* Button styling */
-            .stButton > button {
-                background-color: #4CAF50;
-                color: white;
-                padding: 10px 20px;
-                border: none;
-                border-radius: 10px;
-                cursor: pointer;
-                font-size: 16px;
-            }
-            .stButton > button:hover {
-                background-color: #45a049;
-            }
-            /* Hide the sidebar */
-            [data-testid="stSidebar"] {
-                display: none;
-            }
-        </style>
-        """, unsafe_allow_html=True)
 
-    # Apply custom CSS
-    local_css()
-
-    # Create a custom header container
-    st.markdown("""
-    <div class="header">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.jpg" class="logo" alt="Calibrage Logo">
-        <h1>Calibrage Data Search Engine</h1>
-    </div>
-    """, unsafe_allow_html=True)
     st.title("🔍 Business Intelligence Scraper")
     st.write("Enter search terms like: 'Software companies in California' or 'Restaurants in Tokyo'")
     
