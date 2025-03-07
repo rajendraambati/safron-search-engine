@@ -310,6 +310,19 @@ def main():
             .clear-button:hover {
                 background-color: #cc0000;
             }
+            .scrap-button .stButton > button {
+            background-color: #ff4444 !important;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .scrap-button .stButton > button:hover {
+            background-color: #cc0000 !important;
+        }
         </style>
         """, unsafe_allow_html=True)
 
