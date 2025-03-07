@@ -334,8 +334,6 @@ def main():
     col1, col2 = st.columns([1, 1])  # Create two columns for buttons
     with col1:
         search_button = st.button("Search")
-    with col2:
-        scrap_button = st.button("Scrap")
 
     # Placeholders for dynamic content
     progress_placeholder = st.empty()
@@ -344,7 +342,7 @@ def main():
     table_placeholder = st.empty()     # Table
 
     # Process search when either button is clicked
-    if search_button or scrap_button:
+    if search_button:
         search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
         if search_queries:
             st.session_state.previous_queries = search_queries
