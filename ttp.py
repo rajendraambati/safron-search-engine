@@ -279,12 +279,12 @@ def main():
                 background-color: #cc0000 !important;
             }
             /* Scrap button styling */
-            .scrap-button .stButton > button {
+            /*.scrap-button .stButton > button {
                 background-color: #ff8c00 !important;
-            }
-            .scrap-button .stButton > button:hover {
+            }*/
+            /*.scrap-button .stButton > button:hover {
                 background-color: #cc6e00 !important;
-            }
+            }*/
             /* Hide the sidebar */
             [data-testid="stSidebar"] {
                 display: none;
@@ -334,12 +334,6 @@ def main():
         st.markdown('<div class="search-button">', unsafe_allow_html=True)
         search_button = st.button("Search")
         st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="scrap-button">', unsafe_allow_html=True)
-        scrap_button = st.button("Scrap")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
     with col3:
         st.markdown('<div class="clear-button">', unsafe_allow_html=True)
         clear_button = st.button("Clear", key="clear_button", help="Clear output and refresh page")
@@ -352,7 +346,7 @@ def main():
     table_placeholder = st.empty()     # Table
     
     # Process search when Search or Scrap button is clicked
-    if search_button or scrap_button:
+    if search_button:
         search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
         if search_queries:
             st.session_state.previous_queries = search_queries
