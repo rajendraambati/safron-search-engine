@@ -330,8 +330,12 @@ def main():
     # Search term input with placeholder
     search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input")
     
-    # Add a search button
-    search_button = st.button("Search")
+    # Add a search button and scrap button
+    col1, col2 = st.columns([1, 1])  # Create two columns for buttons
+    with col1:
+        search_button = st.button("Search")
+    with col2:
+        scrap_button = st.button("Scrap")
 
     # Placeholders for dynamic content
     progress_placeholder = st.empty()
@@ -339,8 +343,8 @@ def main():
     download_placeholder = st.empty()
     table_placeholder = st.empty()     # Table
 
-    # Process search when button is clicked
-    if search_button:
+    # Process search when either button is clicked
+    if search_button or scrap_button:
         search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
         if search_queries:
             st.session_state.previous_queries = search_queries
