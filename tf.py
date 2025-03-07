@@ -333,14 +333,21 @@ def main():
         st.session_state.download_clicked = False
     if 'search_clicked' not in st.session_state:
         st.session_state.search_clicked = False
+    if 'clear_clicked' not in st.session_state:
+        st.session_state.clear_clicked = False
 
-    # Search term input with placeholder
-    search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input")
+    # Check if clear was clicked and reset search input
+    if st.session_state.clear_clicked:
+        search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input", value="")
+    else:
+        search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input")
     
     # Add buttons in columns
     col1, col2, col3 = st.columns([1, 1, 1])  # Create three columns for buttons
     with col1:
         search_button = st.button("Search")
+    with col2:
+        scrap_button = st.button("Scrap")
     with col3:
         clear_button = st.button("Clear", key="clear_button", help="Clear output and refresh page")
 
@@ -351,10 +358,11 @@ def main():
     table_placeholder = st.empty()     # Table
 
     # Process search when Search or Scrap button is clicked
-    if search_button:
+    if search_button or scrap_button:
         search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
         if search_queries:
             st.session_state.previous_queries = search_queries
+            st.session_state.clear_clicked = False  # Reset clear state
             run_scraping(
                 search_queries,
                 progress_placeholder,
@@ -376,8 +384,7 @@ def main():
         st.session_state.scraping_completed = False
         st.session_state.download_clicked = False
         st.session_state.previous_queries = []
-        # Clear the search input using the key
-        st.session_state["search_input"] = ""  # Correct way to clear text input
+        st.session_state.clear_clicked = True  # Set flag to clear input on next run
         # Trigger page refresh
         st.experimental_rerun()
 
