@@ -369,7 +369,7 @@ def main():
     table_placeholder = st.empty()     # Table
 
     # Process search when Search or Scrap button is clicked
-    if search_button or scrap_button:
+    if search_button:
         search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
         if search_queries:
             st.session_state.previous_queries = search_queries
