@@ -303,6 +303,13 @@ def main():
                 flex-direction: column;
                 align-items: center;
             }
+            /* Clear button specific styling */
+            .clear-button {
+                background-color: #ff4444;
+            }
+            .clear-button:hover {
+                background-color: #cc0000;
+            }
         </style>
         """, unsafe_allow_html=True)
 
@@ -330,10 +337,12 @@ def main():
     # Search term input with placeholder
     search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input")
     
-    # Add a search button and scrap button
-    col1, col2 = st.columns([1, 1])  # Create two columns for buttons
+    # Add buttons in columns
+    col1, col2, col3 = st.columns([1, 1, 1])  # Create three columns for buttons
     with col1:
         search_button = st.button("Search")
+    with col3:
+        clear_button = st.button("Clear", key="clear_button", help="Clear output and refresh page")
 
     # Placeholders for dynamic content
     progress_placeholder = st.empty()
@@ -341,7 +350,7 @@ def main():
     download_placeholder = st.empty()
     table_placeholder = st.empty()     # Table
 
-    # Process search when either button is clicked
+    # Process search when Search or Scrap button is clicked
     if search_button:
         search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
         if search_queries:
@@ -355,6 +364,22 @@ def main():
             )
         else:
             st.error("Please enter at least one valid search query.")
+
+    # Handle clear button click
+    if clear_button:
+        # Clear all placeholders
+        progress_placeholder.empty()
+        success_placeholder.empty()
+        download_placeholder.empty()
+        table_placeholder.empty()
+        # Reset session state
+        st.session_state.scraping_completed = False
+        st.session_state.download_clicked = False
+        st.session_state.previous_queries = []
+        # Clear the search input by resetting the widget
+        st.session_state.search_input = ""
+        # Trigger page refresh
+        st.experimental_rerun()
 
     # Clear UI after download
     if st.session_state.download_clicked:
