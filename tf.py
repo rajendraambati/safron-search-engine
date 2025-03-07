@@ -385,8 +385,8 @@ def main():
         st.session_state.download_clicked = False
         st.session_state.previous_queries = []
         st.session_state.clear_clicked = True  # Set flag to clear input on next run
-        # Trigger page refresh
-        st.experimental_rerun()
+        # Trigger page refresh - FIXED LINE BELOW
+        st.rerun()
 
     # Clear UI after download
     if st.session_state.download_clicked:
