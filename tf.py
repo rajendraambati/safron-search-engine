@@ -290,9 +290,9 @@ def main():
                 font-size: 16px;
                 margin-top: 10px;
             }
-            .stButton > button:hover {
+            /*.stButton > button:hover {
                 background-color: #45a049;
-            }
+            }*/
             /* Hide the sidebar */
             [data-testid="stSidebar"] {
                 display: none;
@@ -310,7 +310,7 @@ def main():
             .clear-button:hover {
                 background-color: #cc0000;
             }
-            .scrap-button .stButton > button {
+            .stButton > button {
             background-color: #ff4444 !important;
             color: white;
             padding: 10px 20px;
@@ -320,7 +320,7 @@ def main():
             font-size: 16px;
             margin-top: 10px;
         }
-        .scrap-button .stButton > button:hover {
+        .stButton > button:hover {
             background-color: #cc0000 !important;
         }
         </style>
@@ -359,8 +359,6 @@ def main():
     col1, col2, col3 = st.columns([1, 1, 1])  # Create three columns for buttons
     with col1:
         search_button = st.button("Search")
-    with col2:
-        scrap_button = st.button("Scrap")
     with col3:
         clear_button = st.button("Clear", key="clear_button", help="Clear output and refresh page")
 
