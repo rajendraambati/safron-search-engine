@@ -376,8 +376,8 @@ def main():
         st.session_state.scraping_completed = False
         st.session_state.download_clicked = False
         st.session_state.previous_queries = []
-        # Clear the search input by resetting the widget
-        st.session_state.search_input = ""
+        # Clear the search input using the key
+        st.session_state["search_input"] = ""  # Correct way to clear text input
         # Trigger page refresh
         st.experimental_rerun()
 
