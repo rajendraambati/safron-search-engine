@@ -368,8 +368,8 @@ def main():
         success_msg.empty()
         download_btn.empty()
         
-        # Trigger a rerun to refresh the UI
-        st.experimental_rerun()
+        # Trigger a rerun to refresh the UI (Updated to st.rerun())
+        st.rerun()
 
     # Search button handler
     if search_btn:
