@@ -252,7 +252,7 @@ def main():
         layout="wide"
     )
     
-    # Custom CSS with all requested changes
+    # Custom CSS (unchanged)
     st.markdown("""
     <style>
         /* Hide left sidebar */
@@ -307,7 +307,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # Header section
+    # Header section (unchanged)
     st.markdown("""
     <div class="header" style="text-align: center;">
         <img src="https://github.com/rajendraambati/safron-search-engine/raw/main/calibrage.jpg" 
@@ -316,22 +316,28 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Initialize session state for search input
-    if 'search_input' not in st.session_state:
-        st.session_state.search_input = ''
+    # Initialize session state for controlling clear action
+    if 'clear_trigger' not in st.session_state:
+        st.session_state.clear_trigger = False
+    if 'search_terms' not in st.session_state:
+        st.session_state.search_terms = ""
 
     # Search container
     with st.container():
         st.markdown('<div class="search-container">', unsafe_allow_html=True)
         
-        # Search input
+        # Search input - Use a separate variable instead of direct session state manipulation
         search_input = st.text_input(
             "Search Terms", 
+            value=st.session_state.search_terms,
             placeholder="Enter comma-separated search terms...",
             label_visibility="hidden",
             key="search_input",
             help="Enter multiple terms separated by commas"
         )
+        
+        # Update session state with input
+        st.session_state.search_terms = search_input
         
         # Button container
         st.markdown('<div class="button-container">', unsafe_allow_html=True)
@@ -352,8 +358,9 @@ def main():
     
     # Clear button handler
     if clear_btn:
-        # Reset session state
-        st.session_state.search_input = ""
+        # Reset session state variables
+        st.session_state.search_terms = ""
+        st.session_state.clear_trigger = True
         
         # Clear all output elements
         progress_bar.empty()
@@ -361,12 +368,12 @@ def main():
         success_msg.empty()
         download_btn.empty()
         
-        # Force clear any remaining elements
+        # Trigger a rerun to refresh the UI
         st.experimental_rerun()
 
     # Search button handler
     if search_btn:
-        terms = [t.strip() for t in search_input.split(",") if t.strip()]
+        terms = [t.strip() for t in st.session_state.search_terms.split(",") if t.strip()]
         if terms:
             with st.spinner("Initializing browser..."):
                 run_scraping(terms, progress_bar, results_table, success_msg, download_btn)
