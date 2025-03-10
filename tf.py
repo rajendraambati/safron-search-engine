@@ -242,171 +242,143 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
                 driver.quit()
             except:
                 pass
+# ... (previous code remains the same until the main function)
 
 def main():
-    # Custom logo path
-    logo_path = "calibrage.jpg"
-
-    # Set page configuration
+    # Set page configuration first
     st.set_page_config(
         page_title="Calibrage Data Search Engine",
-        page_icon=logo_path,
+        page_icon="calibrage.jpg",
         layout="wide"
     )
     
-    # Apply custom CSS for styling
-    def local_css():
-        st.markdown("""
-        <style>
-            /* Center align the header */
-            .header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            /* Style for the logo */
-            .logo {
-                width: 150px;
-                margin-bottom: 10px;
-            }
-            /* Search box styling */
-            .stTextInput > div > div > input {
-                padding: 10px;
-                font-size: 16px;
-                border-radius: 10px;
-                border: 1px solid #ccc;
-            }
-            /* Button styling */
-            .stButton > button {
-                background-color: #4CAF50;
-                color: white;
-                padding: 10px 20px;
-                border: none;
-                border-radius: 10px;
-                cursor: pointer;
-                font-size: 16px;
-                margin-top: 10px;
-            }
-            /*.stButton > button:hover {
-                background-color: #45a049;
-            }*/
-            /* Hide the sidebar */
-            [data-testid="stSidebar"] {
-                display: none;
-            }
-            /* Container for search input and button */
-            .search-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-            }
-            /* Clear button specific styling */
-            .clear-button {
-                background-color: #ff4444;
-            }
-            .clear-button:hover {
-                background-color: #cc0000;
-            }
-            .stButton > button {
-            background-color: #ff4444 !important;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        .stButton > button:hover {
-            background-color: #cc0000 !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-    # Apply custom CSS
-    local_css()
-
-    # Create a custom header container
+    # Custom CSS (unchanged)
     st.markdown("""
-    <div class="header">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.jpg?raw=true" class="logo" alt="Calibrage Logo">
+    <style>
+        /* Hide left sidebar */
+        .stSidebar {
+            display: none !important;
+        }
+        
+        /* Center main content */
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Search input styling */
+        .search-input input {
+            width: 100% !important;
+            margin-bottom: 1rem;
+        }
+        
+        /* Search container */
+        .search-container {
+            width: 40%;
+            margin: 0 auto;
+        }
+        
+        /* Button styling */
+        .search-button, .clear-button {
+            width: 48%;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .search-button {
+            background-color: #4CAF50 !important;
+        }
+        
+        .clear-button {
+            background-color: #ff4444 !important;
+        }
+        
+        /* Button container */
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            width: 40%;
+            margin: 0 auto;
+            margin-top: 1rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Header section (unchanged)
+    st.markdown("""
+    <div class="header" style="text-align: center;">
+        <img src="https://github.com/rajendraambati/safron-search-engine/raw/main/calibrage.jpg" 
+             style="width:150px; margin:20px;">
         <h1>Calibrage Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
-
-    # Session state initialization
-    if 'scraping_completed' not in st.session_state:
-        st.session_state.scraping_completed = False
-    if 'previous_queries' not in st.session_state:
-        st.session_state.previous_queries = []
-    if 'download_clicked' not in st.session_state:
-        st.session_state.download_clicked = False
-    if 'search_clicked' not in st.session_state:
-        st.session_state.search_clicked = False
-    if 'clear_clicked' not in st.session_state:
-        st.session_state.clear_clicked = False
-
-    # Check if clear was clicked and reset search input
-    if st.session_state.clear_clicked:
-        search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input", value="")
-    else:
-        search_input = st.text_input("", placeholder="Enter your search key term...", key="search_input")
     
-    # Add buttons in columns
-    col1, col2, col3 = st.columns([1, 1, 1])  # Create three columns for buttons
-    with col1:
-        search_button = st.button("Search")
-    with col3:
-        clear_button = st.button("Clear", key="clear_button", help="Clear output and refresh page")
+    # Initialize session state for controlling clear action
+    if 'clear_trigger' not in st.session_state:
+        st.session_state.clear_trigger = False
+    if 'search_terms' not in st.session_state:
+        st.session_state.search_terms = ""
 
-    # Placeholders for dynamic content
-    progress_placeholder = st.empty()
-    success_placeholder = st.empty()   # Success message
-    download_placeholder = st.empty()
-    table_placeholder = st.empty()     # Table
+    # Search container
+    with st.container():
+        st.markdown('<div class="search-container">', unsafe_allow_html=True)
+        
+        # Search input - Use a separate variable instead of direct session state manipulation
+        search_input = st.text_input(
+            "Search Terms", 
+            value=st.session_state.search_terms,
+            placeholder="Enter comma-separated search terms...",
+            label_visibility="hidden",
+            key="search_input",
+            help="Enter multiple terms separated by commas"
+        )
+        
+        # Update session state with input
+        st.session_state.search_terms = search_input
+        
+        # Button container
+        st.markdown('<div class="button-container">', unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            search_btn = st.button("Search", use_container_width=True, key="search_btn")
+        with col2:
+            clear_btn = st.button("Clear", use_container_width=True, key="clear_btn")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Process search when Search or Scrap button is clicked
-    if search_button:
-        search_queries = [query.strip() for query in search_input.split(",") if query.strip()]
-        if search_queries:
-            st.session_state.previous_queries = search_queries
-            st.session_state.clear_clicked = False  # Reset clear state
-            run_scraping(
-                search_queries,
-                progress_placeholder,
-                table_placeholder,
-                success_placeholder,
-                download_placeholder
-            )
-        else:
-            st.error("Please enter at least one valid search query.")
-
-    # Handle clear button click
-    if clear_button:
-        # Clear all placeholders
-        progress_placeholder.empty()
-        success_placeholder.empty()
-        download_placeholder.empty()
-        table_placeholder.empty()
-        # Reset session state
-        st.session_state.scraping_completed = False
-        st.session_state.download_clicked = False
-        st.session_state.previous_queries = []
-        st.session_state.clear_clicked = True  # Set flag to clear input on next run
-        # Trigger page refresh - FIXED LINE BELOW
+    # Dynamic content placeholders
+    progress_bar = st.empty()
+    results_table = st.empty()
+    success_msg = st.empty()
+    download_btn = st.empty()
+    
+    # Clear button handler
+    if clear_btn:
+        # Reset session state variables
+        st.session_state.search_terms = ""
+        st.session_state.clear_trigger = True
+        
+        # Clear all output elements
+        progress_bar.empty()
+        results_table.empty()
+        success_msg.empty()
+        download_btn.empty()
+        
+        # Trigger a rerun to refresh the UI (Updated to st.rerun())
         st.rerun()
 
-    # Clear UI after download
-    if st.session_state.download_clicked:
-        progress_placeholder.empty()
-        table_placeholder.empty()
-        success_placeholder.empty()
-        download_placeholder.empty()
-        st.session_state.scraping_completed = False
-        st.session_state.download_clicked = False
+    # Search button handler
+    if search_btn:
+        terms = [t.strip() for t in st.session_state.search_terms.split(",") if t.strip()]
+        if terms:
+            with st.spinner("Initializing browser..."):
+                run_scraping(terms, progress_bar, results_table, success_msg, download_btn)
+        else:
+            st.error("Please enter valid search terms")
 
 if __name__ == "__main__":
     main()
