@@ -11,178 +11,304 @@ import re
 from bs4 import BeautifulSoup
 import requests
 import io
+import platform
 import logging
 
-# Custom CSS for layout and styling
-st.markdown("""
-<style>
-    /* Main container styling */
-    .main-container {
-        padding: 2rem;
-    }
-    
-    /* Search input styling */
-    .search-input {
-        width: 60%;
-        margin-bottom: 1rem;
-    }
-    
-    /* Button container positioning */
-    .button-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        width: 60%;
-        margin-bottom: 2rem;
-    }
-    
-    /* Clear button styling */
-    .clear-button {
-        position: relative;
-        bottom: 1.5rem;
-        left: 1rem;
-        background-color: #ff4444 !important;
-    }
-    
-    /* Sidebar log styling */
-    .sidebar-log {
-        height: 60vh;
-        overflow-y: auto;
-        padding: 1rem;
-        background-color: #f0f0f0;
-        border-radius: 0.5rem;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
-# Custom logging handler for Streamlit
-class StreamlitLogHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.logs = []
-        self.placeholder = st.sidebar.empty()
-        
-    def emit(self, record):
-        if 'label got an empty value' in record.getMessage():
-            return  # Filter out Streamlit's label warnings
-        msg = self.format(record)
-        self.logs.append(msg)
-        self.placeholder.markdown(f"```\\n{'\\n'.join(self.logs[-20:])}\\n```")
-
-# Setup logging
-logger = logging.getLogger()
-handler = StreamlitLogHandler()
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
 
 def setup_chrome_driver():
-    """Setup Chrome driver with enhanced error handling"""
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    
+    """Set up and return a Chrome WebDriver with additional options for cloud environment."""
     try:
-        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-features=NetworkService")
+        options.add_argument("--window-size=1920x1080")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--disable-extensions")
+        
+        try:
+            options.binary_location = "/usr/bin/chromium"
+        except:
+            try:
+                options.binary_location = "/usr/bin/chromium-browser"
+            except:
+                st.warning("Could not set Chromium binary location.")
+
+        try:
+            service = Service(executable_path="/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
+            return driver 
+        except Exception as e:
+            logging.error(f"First attempt failed: {str(e)}")
+            try:
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
+                return driver
+            except Exception as e:
+                logging.error(f"Second attempt failed: {str(e)}")
+                try:
+                    driver = webdriver.Chrome(options=options)
+                    return driver
+                except Exception as e:
+                    logging.error(f"All attempts failed: {str(e)}")
+                    return None
     except Exception as e:
-        logger.error(f"Driver setup failed: {str(e)}")
+        logging.error(f"Error in setup_chrome_driver: {str(e)}")
         return None
 
 def extract_data(xpath, driver):
-    """Safely extract data using XPath"""
+    """Extract data from the page using the provided XPath."""
     try:
-        return driver.find_element(By.XPATH, xpath).text
+        element = driver.find_element(By.XPATH, xpath)
+        return element.text
     except:
         return "N/A"
 
 def scrape_google_maps(search_query, driver, max_companies=1000):
-    """Enhanced Google Maps scraping function"""
+    """Scrape Google Maps for company details based on the search query."""
     try:
         driver.get("https://www.google.com/maps")
+        time.sleep(5)
         search_box = driver.find_element(By.XPATH, '//input[@id="searchboxinput"]')
-        search_box.send_keys(search_query + Keys.ENTER)
+        search_box.send_keys(search_query)
+        search_box.send_keys(Keys.ENTER)
         time.sleep(5)
         
-        # Zoom out for better results visibility
-        for _ in range(5):
-            ActionChains(driver).key_down(Keys.CONTROL).send_keys("-").key_up(Keys.CONTROL).perform()
+        actions = ActionChains(driver)
+        for _ in range(10):
+            actions.key_down(Keys.CONTROL).send_keys("-").key_up(Keys.CONTROL).perform()
             time.sleep(1)
-            
-        # Scroll to load all results
-        scrollable = driver.find_element(By.XPATH, '//div[@aria-label="Results for"]')
-        last_height = 0
         
-        while True:
-            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable)
-            time.sleep(3)
-            new_height = scrollable.size['height']
-            if new_height == last_height:
+        all_listings = set()
+        previous_count = 0
+        max_scrolls = 50
+        scroll_attempts = 0
+        
+        while scroll_attempts < max_scrolls:
+            try:
+                scrollable_div = driver.find_element(By.XPATH, '//div[contains(@aria-label, "Results for")]')
+                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
+                time.sleep(3)
+                current_listings = driver.find_elements(By.XPATH, '//a[contains(@href, "https://www.google.com/maps/place")]')
+                current_count = len(current_listings)
+                
+                for listing in current_listings:
+                    href = listing.get_attribute("href")
+                    if href:
+                        all_listings.add(href)
+                
+                if current_count == previous_count or len(all_listings) >= max_companies:
+                    break
+                previous_count = current_count
+                scroll_attempts += 1
+            except Exception as e:
+                logging.warning(f"Error during scrolling: {str(e)}")
                 break
-            last_height = new_height
-            
+        
         results = []
-        for listing in driver.find_elements(By.XPATH, '//a[contains(@href, "/maps/place/")]'):
-            href = listing.get_attribute('href')
-            if href:
+        for i, href in enumerate(all_listings): 
+            if i >= max_companies:
+                break
+            try:
                 driver.get(href)
                 time.sleep(3)
+                name = extract_data('//h1[contains(@class, "DUwDvf lfPIob")]', driver)
+                address = extract_data('//button[@data-item-id="address"]//div[contains(@class, "fontBodyMedium")]', driver)
+                phone = extract_data('//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "fontBodyMedium")]', driver)
+                website = extract_data('//a[@data-item-id="authority"]//div[contains(@class, "fontBodyMedium")]', driver)
+                
                 results.append({
-                    "Name": extract_data('//h1', driver),
-                    "Address": extract_data('//button[@data-item-id="address"]', driver),
-                    "Phone": extract_data('//button[@data-item-id^="phone"]', driver),
-                    "Website": extract_data('//a[@data-item-id="authority"]', driver)
+                    "Name": name,
+                    "Address": address,
+                    "Phone Number": phone,
+                    "Website": website
                 })
-                logger.info(f"Scraped: {results[-1]['Name']}")
-                
-        return pd.DataFrame(results)
+                logging.info(f"Scraped company: {name}")
+            except Exception as e:
+                logging.warning(f"Error processing listing {i+1}: {str(e)}")
+                continue
+        
+        return pd.DataFrame(results) if results else None
     except Exception as e:
-        logger.error(f"Scraping failed: {str(e)}")
-        return pd.DataFrame()
+        logging.error(f"Error in scrape_google_maps: {str(e)}")
+        return None
 
-def run_scraping(search_terms, progress, table, success, download):
-    """Main scraping workflow with progress tracking"""
-    driver = setup_chrome_driver()
-    if not driver:
-        st.error("Failed to initialize browser driver")
-        return
+def extract_emails_from_text(text):
+    """Extract email addresses from text using regex."""
+    return re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
 
+def scrape_website_for_emails(url):
+    """Scrape a website for email addresses."""
     try:
-        all_results = []
-        for term in search_terms:
-            df = scrape_google_maps(term, driver)
-            if not df.empty:
-                # Scrape emails from websites
-                df['Email'] = df['Website'].apply(lambda url: 
-                    ', '.join(scrape_website_emails(url)) if pd.notna(url) else "N/A")
-                all_results.append(df)
-                
-            progress.progress(0.5)
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        emails = set(extract_emails_from_text(soup.get_text()))
+        footer = soup.find('footer')
+        if footer:
+            emails.update(extract_emails_from_text(footer.get_text()))
+        
+        contact_links = [a['href'] for a in soup.find_all('a', href=True) if 'contact' in a['href'].lower()]
+        for link in contact_links:
+            if not link.startswith("http"):
+                link = url.rstrip("/") + "/" + link.lstrip("/")
+            try:
+                contact_response = requests.get(link, timeout=10)
+                contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
+                emails.update(extract_emails_from_text(contact_soup.get_text()))
+            except Exception:
+                continue 
+        return list(emails)
+    except Exception:
+        return []
+
+def run_scraping(search_queries, progress_placeholder, table_placeholder, success_placeholder, download_placeholder):
+    """Run scraping for multiple search queries and update results dynamically."""
+    if not search_queries:
+        st.error("Please enter at least one valid search query.")
+        return
+    
+    driver = None
+    cumulative_results = []
+    try:
+        driver = setup_chrome_driver()
+        if driver is None:
+            st.error("Failed to initialize Chrome driver.")
+            return
+        
+        for query_index, search_query in enumerate(search_queries):
+            st.session_state.current_query = search_query
+            df = scrape_google_maps(search_query, driver, max_companies=1000)
             
-        if all_results:
-            final_df = pd.concat(all_results)
-            table.dataframe(final_df)
-            excel_io = io.BytesIO()
-            final_df.to_excel(excel_io, index=False)
-            download.download_button(
-                "Download Results",
-                excel_io,
-                "calibrage_data.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            if df is not None and not df.empty:
+                websites = df["Website"].tolist()
+                email_results = []
+                progress_bar = progress_placeholder.progress(0)
+                
+                for i, website in enumerate(websites):
+                    if website != "N/A" and isinstance(website, str) and website.strip():
+                        urls_to_try = [f"http://{website}", f"https://{website}"]
+                        emails_found = []
+                        for url in urls_to_try:
+                            try:
+                                emails = scrape_website_for_emails(url)
+                                emails_found.extend(emails)
+                            except Exception as e:
+                                logging.warning(f"Error scraping emails from {url}: {str(e)}")
+                        email_results.append(", ".join(set(emails_found)) if emails_found else "N/A")
+                    else:
+                        email_results.append("N/A")
+                    progress_bar.progress((i + 1) / len(websites))
+                
+                df["Email"] = email_results
+                cumulative_results.append(df)
+                combined_df = pd.concat(cumulative_results, ignore_index=True)
+                table_placeholder.table(combined_df)
+                success_placeholder.success(f"Query {query_index + 1}/{len(search_queries)} completed.")
+            else:
+                st.warning(f"No results found for the query: {search_query}")
+        
+        if cumulative_results:
+            combined_df = pd.concat(cumulative_results, ignore_index=True)
+            excel_data = io.BytesIO()
+            with pd.ExcelWriter(excel_data, engine="openpyxl") as writer:
+                combined_df.to_excel(writer, index=False)
+            excel_data.seek(0)
+            
+            st.session_state.scraping_completed = True
+            success_placeholder.success("All queries completed! 👇 Click Download Button Below")
+            download_placeholder.download_button(
+                label="Download Results",
+                data=excel_data,
+                file_name="Calibrage_Data_Extraction.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                on_click=lambda: setattr(st.session_state, 'download_clicked', True)
             )
-            success.success("Scraping completed successfully!")
+        else:
+            st.warning("No results found for any of the queries.")
+    except Exception as e:
+        st.error(f"An error occurred during scraping: {str(e)}")
     finally:
-        driver.quit()
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
 
 def main():
-    # Page configuration
+    # Set page configuration first
     st.set_page_config(
-        page_title="Calibrage Maps Scraper",
-        layout="wide",
-        page_icon="🗺️"
+        page_title="Calibrage Data Search Engine",
+        page_icon="calibrage.jpg",
+        layout="wide"
     )
     
+    # Custom CSS with color changes and button positioning
+    st.markdown("""
+    <style>
+        /* Main container styling */
+        .main-container {
+            padding: 2rem;
+        }
+        
+        /* Search input styling */
+        .search-input {
+            width: 60%;
+            margin-bottom: 1rem;
+        }
+        
+        /* Button container positioning */
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 60%;
+            margin-bottom: 2rem;
+        }
+        
+        /* Clear button styling */
+        .clear-button {
+            position: relative;
+            bottom: 1.5rem;
+            left: 1rem;
+            background-color: #ff4444 !important;
+        }
+        
+        /* Search button styling */
+        .search-button {
+            background-color: #4CAF50 !important;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .search-button:hover {
+            background-color: #45a049 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        
+        /* Sidebar log styling */
+        .sidebar-log {
+            height: 60vh;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #f0f0f0;
+            border-radius: 0.5rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     # Header section
     st.markdown("""
     <div class="header">
@@ -193,7 +319,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # Search input with proper labeling
-    search_terms = st.text_input(
+    search_input = st.text_input(
         "Search Terms", 
         placeholder="Enter comma-separated search terms...",
         label_visibility="hidden",
@@ -205,10 +331,12 @@ def main():
     with st.container():
         col1, col2 = st.columns([3, 1])
         with col1:
-            search_btn = st.button("Start Scraping", use_container_width=True)
+            st.markdown('<div class="search-button">', unsafe_allow_html=True)
+            search_btn = st.button("Search", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="clear-button">', unsafe_allow_html=True)
-            clear_btn = st.button("Clear All", key="clear_btn", help="Reset the application")
+            clear_btn = st.button("Clear", key="clear_btn", help="Reset the application")
             st.markdown('</div>', unsafe_allow_html=True)
     
     # Dynamic content placeholders
@@ -228,7 +356,7 @@ def main():
     
     # Search button handler
     if search_btn:
-        terms = [t.strip() for t in search_terms.split(",") if t.strip()]
+        terms = [t.strip() for t in search_input.split(",") if t.strip()]
         if terms:
             with st.spinner("Initializing browser..."):
                 run_scraping(terms, progress_bar, results_table, success_msg, download_btn)
