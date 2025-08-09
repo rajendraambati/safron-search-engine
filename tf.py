@@ -248,7 +248,7 @@ def main():
     # Set page configuration first
     st.set_page_config(
         page_title="Calibrage Data Search Engine",
-        page_icon="/SL-070620-32220-25.jpg",
+        page_icon="SL-070620-32220-25.jpg",
         layout="wide"
     )
     
