@@ -209,7 +209,7 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
             download_placeholder.download_button(
                 label="Download Results",
                 data=excel_data,
-                file_name="Calibrage_Data_Extraction.xlsx",
+                file_name="Rajendra_Data_Extraction.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 on_click=lambda: setattr(st.session_state, 'download_clicked', True)
             )
@@ -226,10 +226,10 @@ def run_scraping(search_queries, progress_placeholder, table_placeholder, succes
 
 def main():
     # Custom logo path
-    logo_path = "calibrage.jpg"
+    logo_path = "SL-070620-32220-25.jpg"
     # Set page configuration
     st.set_page_config(
-        page_title="Calibrage Data Search Engine",
+        page_title="Rajendra Data Search Engine",
         page_icon=logo_path,
         layout="wide"
     )
@@ -304,8 +304,8 @@ def main():
     # Create a custom header container
     st.markdown("""
     <div class="header">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/calibrage.jpg?raw=true" class="logo" alt="Calibrage Logo">
-        <h1>Calibrage Data Search Engine</h1>
+        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/SL-070620-32220-25.jpg?raw=true" class="logo" alt="Calibrage Logo">
+        <h1>Rajendra Data Search Engine</h1>
     </div>
     """, unsafe_allow_html=True)
     
