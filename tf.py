@@ -310,7 +310,7 @@ def main():
     # Header section (unchanged)
     st.markdown("""
     <div class="header" style="text-align: center;">
-        <img src="https://github.com/rajendraambati/safron-search-engine/blob/main/SL-070620-32220-25.jpg" 
+        <img src="SL-070620-32220-25.jpg" 
              style="width:150px; margin:20px;">
         <h1>Rajendra Data Search Engine</h1>
     </div>
